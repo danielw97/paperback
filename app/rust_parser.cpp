@@ -32,35 +32,20 @@ parser_flags rust_parser::supported_flags() const {
 
 std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 	try {
-		// Convert wxString to std::string for Rust FFI
 		const std::string file_path = ctx.file_path.ToStdString();
 		const std::string password = ctx.password.value_or("");
-
-		// Call Rust parser
 		const auto ffi_doc = parse_document(rust::Str(file_path), rust::Str(password));
-
-		// Convert Rust document to C++ document
 		auto doc = std::make_unique<document>();
-
-		// Set basic info
 		doc->title = wxString::FromUTF8(std::string(ffi_doc.title).c_str());
 		doc->author = wxString::FromUTF8(std::string(ffi_doc.author).c_str());
-
-		// Set buffer content
 		doc->buffer.set_content(wxString::FromUTF8(std::string(ffi_doc.content).c_str()));
-
-		// Add markers
 		for (const auto& rust_marker : ffi_doc.markers) {
 			const auto marker_type_value = static_cast<marker_type>(rust_marker.marker_type);
 			const wxString text = wxString::FromUTF8(std::string(rust_marker.text).c_str());
 			const wxString ref = wxString::FromUTF8(std::string(rust_marker.reference).c_str());
 			doc->buffer.add_marker(rust_marker.position, marker_type_value, text, ref, rust_marker.level);
 		}
-
-		// Finalize markers (sorts them by position)
 		doc->buffer.finalize_markers();
-
-		// Convert flat TOC items to hierarchical structure
 		// Note: For now, we're adding them as flat items
 		// A more sophisticated approach would reconstruct the hierarchy
 		for (const auto& rust_toc : ffi_doc.toc_items) {
@@ -70,28 +55,17 @@ std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 			item->offset = rust_toc.offset;
 			doc->toc_items.push_back(std::move(item));
 		}
-
-		// Set stats
 		doc->stats.word_count = ffi_doc.stats.word_count;
 		doc->stats.line_count = ffi_doc.stats.line_count;
 		doc->stats.char_count = ffi_doc.stats.char_count;
-
 		return doc;
 	} catch (const std::exception& e) {
 		throw parser_exception(wxString::FromUTF8(e.what()), ctx.file_path);
 	}
 }
 
-// Text parser
-rust_text_parser::rust_text_parser() : rust_parser(
-														 wxT("Text Files"),
-														 {wxT("txt"), wxT("log")},
-														 parser_flags::none) {
+rust_text_parser::rust_text_parser() : rust_parser("Text Files", {"txt", "log"}, parser_flags::none) {
 }
 
-// Markdown parser
-rust_markdown_parser::rust_markdown_parser() : rust_parser(
-																   wxT("Markdown Files"),
-																   {wxT("md"), wxT("markdown"), wxT("mdown"), wxT("mkdn"), wxT("mkd")},
-																   parser_flags::supports_toc) {
+rust_markdown_parser::rust_markdown_parser() : rust_parser("Markdown Files", {"md", "markdown", "mdown", "mkdn", "mkd"}, parser_flags::supports_toc) {
 }

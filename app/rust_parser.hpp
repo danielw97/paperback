@@ -15,11 +15,9 @@
 #include <vector>
 #include <wx/string.h>
 
-/// Adapter class that wraps a Rust parser
 class rust_parser : public parser {
 public:
 	rust_parser(wxString parser_name, std::vector<wxString> exts, parser_flags flags);
-
 	[[nodiscard]] wxString name() const override;
 	[[nodiscard]] std::span<const wxString> extensions() const override;
 	[[nodiscard]] std::unique_ptr<document> load(const parser_context& ctx) const override;
@@ -31,18 +29,15 @@ private:
 	parser_flags flags_;
 };
 
-// Text parser
 class rust_text_parser final : public rust_parser {
 public:
 	rust_text_parser();
 };
 
-// Markdown parser
 class rust_markdown_parser final : public rust_parser {
 public:
 	rust_markdown_parser();
 };
 
-// Register the Rust parsers
 REGISTER_PARSER(rust_text_parser)
 REGISTER_PARSER(rust_markdown_parser)
