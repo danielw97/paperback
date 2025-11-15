@@ -12,6 +12,7 @@
 #include "config_manager.hpp"
 #include "constants.hpp"
 #include "dialogs.hpp"
+#include "libpaperback.h"
 #include "live_region.hpp"
 #include "main_window.hpp"
 #include "parser.hpp"
@@ -118,62 +119,35 @@ long find_text(const wxString& haystack, const wxString& needle, long start, fin
 }
 
 std::string collapse_whitespace(std::string_view input) {
-	auto result = std::ostringstream{};
-	bool prev_was_space = false;
-	for (size_t i = 0; i < input.size(); ++i) {
-		const auto ch = static_cast<unsigned char>(input[i]);
-		// Check for non-breaking space (UTF-8: 0xC2A0)
-		const bool is_nbsp = (i + 1 < input.size() && ch == UTF8_NBSP_FIRST && static_cast<unsigned char>(input[i + 1]) == UTF8_NBSP_SECOND);
-		if ((std::isspace(ch) != 0) || is_nbsp) {
-			if (!prev_was_space) {
-				result << ' ';
-				prev_was_space = true;
-			}
-			if (is_nbsp) {
-				++i; // Skip the second byte of the UTF-8 sequence.
-			}
-		} else {
-			result << input[i];
-			prev_was_space = false;
-		}
+	const std::string input_str(input);
+	char* result = paperback_collapse_whitespace(input_str.c_str());
+	if (result == nullptr) {
+		return {};
 	}
-	return result.str();
+	std::string output(result);
+	paperback_free_string(result);
+	return output;
 }
 
 std::string trim_string(const std::string& str) {
-	auto start = str.begin();
-	auto end = str.end();
-	auto is_nbsp = [&](std::string::const_iterator it) -> bool {
-		return it != str.end() && std::next(it) != str.end() && static_cast<unsigned char>(*it) == UTF8_NBSP_FIRST && static_cast<unsigned char>(*std::next(it)) == UTF8_NBSP_SECOND;
-	};
-	while (start != end && ((std::isspace(static_cast<unsigned char>(*start)) != 0) || is_nbsp(start))) {
-		if (is_nbsp(start)) {
-			start += 2;
-		} else {
-			++start;
-		}
+	char* result = paperback_trim_string(str.c_str());
+	if (result == nullptr) {
+		return {};
 	}
-	while (start != end) {
-		auto prev = std::prev(end);
-		if (std::isspace(static_cast<unsigned char>(*prev)) != 0) {
-			end = prev;
-		} else if (prev != start && std::prev(prev) != start && is_nbsp(std::prev(prev))) {
-			end = std::prev(prev);
-		} else {
-			break;
-		}
-	}
-	return {start, end};
+	std::string output(result);
+	paperback_free_string(result);
+	return output;
 }
 
 std::string remove_soft_hyphens(std::string_view input) {
-	std::string result(input);
-	const std::string sh = "\xC2\xAD";
-	size_t pos = 0;
-	while ((pos = result.find(sh, pos)) != std::string::npos) {
-		result.erase(pos, sh.size());
+	const std::string input_str(input);
+	char* result = paperback_remove_soft_hyphens(input_str.c_str());
+	if (result == nullptr) {
+		return {};
 	}
-	return result;
+	std::string output(result);
+	paperback_free_string(result);
+	return output;
 }
 
 const parser* get_parser_for_unknown_file(const wxString& path, config_manager& config) {
@@ -207,103 +181,29 @@ void speak(const wxString& message) {
 }
 
 std::string url_decode(std::string_view encoded) {
-	auto hex = [](char c) -> int {
-		if (c >= '0' && c <= '9') {
-			return c - '0';
-		}
-		if (c >= 'a' && c <= 'f') {
-			return c - 'a' + 10;
-		}
-		if (c >= 'A' && c <= 'F') {
-			return c - 'A' + 10;
-		}
-		return -1;
-	};
-	std::string out;
-	out.reserve(encoded.size());
-	for (size_t i = 0; i < encoded.size(); ++i) {
-		char c = encoded[i];
-		if (c == '%') {
-			if (i + 2 < encoded.size()) {
-				int hi = hex(encoded[i + 1]);
-				int lo = hex(encoded[i + 2]);
-				if (hi >= 0 && lo >= 0) {
-					out.push_back(static_cast<char>((hi << 4) | lo));
-					i += 2;
-					continue;
-				}
-			}
-			out.push_back('%');
-		} else if (c == '+') {
-			out.push_back(' ');
-		} else {
-			out.push_back(c);
-		}
+	const std::string encoded_str(encoded);
+	char* result = paperback_url_decode(encoded_str.c_str());
+	if (result == nullptr) {
+		return {};
 	}
-	return out;
+	std::string output(result);
+	paperback_free_string(result);
+	return output;
 }
 
 std::string convert_to_utf8(const std::string& input) {
 	if (input.empty()) {
 		return input;
 	}
-	const auto* data = reinterpret_cast<const unsigned char*>(input.data());
+	const auto* data = reinterpret_cast<const uint8_t*>(input.data());
 	const size_t len = input.length();
-	auto try_convert = [&](size_t bom_size, wxMBConv& conv) -> std::optional<std::string> {
-		const wxString content(input.data() + bom_size, conv, len - bom_size);
-		if (!content.empty()) {
-			return std::string(content.ToUTF8());
-		}
-		return std::nullopt;
-	};
-	if (len >= 4 && data[0] == 0xFF && data[1] == 0xFE && data[2] == 0x00 && data[3] == 0x00) {
-		wxMBConvUTF32LE conv;
-		if (auto result = try_convert(4, conv)) {
-			return *result;
-		}
+	char* result = paperback_convert_to_utf8(data, len);
+	if (result == nullptr) {
+		return input;
 	}
-	if (len >= 4 && data[0] == 0x00 && data[1] == 0x00 && data[2] == 0xFE && data[3] == 0xFF) {
-		wxMBConvUTF32BE conv;
-		if (auto result = try_convert(4, conv)) {
-			return *result;
-		}
-	}
-	if (len >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF) {
-		return input.substr(3);
-	}
-	if (len >= 2 && data[0] == 0xFF && data[1] == 0xFE) {
-		wxMBConvUTF16LE conv;
-		if (auto result = try_convert(2, conv)) {
-			return *result;
-		}
-	}
-	if (len >= 2 && data[0] == 0xFE && data[1] == 0xFF) {
-		wxMBConvUTF16BE conv;
-		if (auto result = try_convert(2, conv)) {
-			return *result;
-		}
-	}
-	const std::pair<const char*, wxMBConv*> fallback_encodings[] = {
-		{nullptr, nullptr}, // UTF-8 without BOM
-		{"local", &wxConvLocal},
-		{"windows-1252", nullptr},
-		{"iso-8859-1", &wxConvISO8859_1},
-	};
-	for (const auto& [name, conv] : fallback_encodings) {
-		wxString content;
-		if (name == nullptr) {
-			content = wxString::FromUTF8(input.data(), len);
-		} else if (conv != nullptr) {
-			content = wxString(input.data(), *conv, len);
-		} else {
-			const wxCSConv csconv(name);
-			content = wxString(input.data(), csconv, len);
-		}
-		if (!content.empty()) {
-			return std::string(content.ToUTF8());
-		}
-	}
-	return input;
+	std::string output(result);
+	paperback_free_string(result);
+	return output;
 }
 
 void cleanup_toc(std::vector<std::unique_ptr<toc_item>>& items) {

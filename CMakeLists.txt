@@ -144,16 +144,6 @@ target_link_libraries(paperback PRIVATE
 	wx::net
 )
 
-# Add Windows system libraries required by Rust standard library
-if(WIN32)
-	target_link_libraries(paperback PRIVATE
-		userenv.lib
-		ntdll.lib
-		ws2_32.lib
-		bcrypt.lib
-	)
-endif()
-
 if (MSVC)
 	target_compile_options(paperback PRIVATE /W4 /permissive- /WX)
 else()
