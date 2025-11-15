@@ -29,9 +29,9 @@ private:
 	parser_flags flags_;
 };
 
-class rust_text_parser final : public rust_parser {
+class rust_html_parser final : public rust_parser {
 public:
-	rust_text_parser();
+	rust_html_parser();
 };
 
 class rust_markdown_parser final : public rust_parser {
@@ -39,5 +39,11 @@ public:
 	rust_markdown_parser();
 };
 
-REGISTER_PARSER(rust_text_parser)
+class rust_text_parser final : public rust_parser {
+public:
+	rust_text_parser();
+};
+
+REGISTER_PARSER(rust_html_parser)
 REGISTER_PARSER(rust_markdown_parser)
+REGISTER_PARSER(rust_text_parser)
