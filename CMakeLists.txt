@@ -154,15 +154,6 @@ target_link_libraries(paperback PRIVATE
 	wx::net
 )
 
-# Link required system libraries for Rust/cxx on different platforms
-if(WIN32)
-	target_link_libraries(paperback PRIVATE ws2_32 userenv bcrypt ntdll)
-elseif(APPLE)
-	target_link_libraries(paperback PRIVATE "-framework Security" "-framework CoreFoundation")
-else()
-	target_link_libraries(paperback PRIVATE pthread dl)
-endif()
-
 if (MSVC)
 	target_compile_options(paperback PRIVATE /W4 /permissive- /WX)
 else()

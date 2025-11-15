@@ -4,11 +4,9 @@ use pulldown_cmark::html::push_html;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
+	html_to_text::{HeadingInfo, HtmlSourceMode, HtmlToText},
 	parser::Parser,
-	utils::{
-		encoding::convert_to_utf8,
-		html_to_text::{HtmlSourceMode, HtmlToText},
-	},
+	utils::encoding::convert_to_utf8,
 };
 
 pub struct MarkdownParser;
@@ -85,7 +83,7 @@ impl Parser for MarkdownParser {
 	}
 }
 
-fn build_toc_from_headings(headings: &[crate::utils::html_to_text::HeadingInfo]) -> Vec<TocItem> {
+fn build_toc_from_headings(headings: &[HeadingInfo]) -> Vec<TocItem> {
 	if headings.is_empty() {
 		return Vec::new();
 	}

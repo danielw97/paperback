@@ -2,11 +2,9 @@ use std::{fs, path::Path};
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
+	html_to_text::{HeadingInfo, HtmlSourceMode, HtmlToText},
 	parser::Parser,
-	utils::{
-		encoding::convert_to_utf8,
-		html_to_text::{HtmlSourceMode, HtmlToText},
-	},
+	utils::encoding::convert_to_utf8,
 };
 
 pub struct HtmlParser;
@@ -84,7 +82,7 @@ impl Parser for HtmlParser {
 	}
 }
 
-fn build_toc_from_headings(headings: &[crate::utils::html_to_text::HeadingInfo]) -> Vec<TocItem> {
+fn build_toc_from_headings(headings: &[HeadingInfo]) -> Vec<TocItem> {
 	if headings.is_empty() {
 		return Vec::new();
 	}

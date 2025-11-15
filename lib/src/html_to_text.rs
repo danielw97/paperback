@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ego_tree::NodeRef;
 use scraper::{Html, Node};
 
-use super::text::{collapse_whitespace, remove_soft_hyphens, trim_string};
+use crate::utils::text::{collapse_whitespace, remove_soft_hyphens, trim_string};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HtmlSourceMode {
