@@ -197,7 +197,7 @@ fn ptr_to_string(ptr: *const c_char) -> Result<String, String> {
 }
 
 #[no_mangle]
-pub extern fn paperback_check_for_updates(
+pub extern "C" fn paperback_check_for_updates(
 	current_version: *const c_char,
 	is_installer_flag: u8,
 ) -> *mut paperback_update_result {
@@ -278,7 +278,7 @@ pub extern fn paperback_check_for_updates(
 }
 
 #[no_mangle]
-pub extern fn paperback_free_update_result(result: *mut paperback_update_result) {
+pub extern "C" fn paperback_free_update_result(result: *mut paperback_update_result) {
 	if result.is_null() {
 		return;
 	}

@@ -55,7 +55,7 @@ pub fn find_zip_entry<R: Read + std::io::Seek>(archive: &mut ZipArchive<R>, file
 }
 
 #[no_mangle]
-pub extern fn paperback_read_zip_entry(zip_path: *const c_char, entry_name: *const c_char) -> *mut c_char {
+pub extern "C" fn paperback_read_zip_entry(zip_path: *const c_char, entry_name: *const c_char) -> *mut c_char {
 	let zip_path_str = match unsafe { c_str_to_string(zip_path) } {
 		Some(s) => s,
 		None => return ptr::null_mut(),
@@ -79,7 +79,7 @@ pub extern fn paperback_read_zip_entry(zip_path: *const c_char, entry_name: *con
 }
 
 #[no_mangle]
-pub extern fn paperback_find_zip_entry(
+pub extern "C" fn paperback_find_zip_entry(
 	zip_path: *const c_char,
 	entry_name: *const c_char,
 	out_index: *mut usize,
@@ -91,14 +91,8 @@ pub extern fn paperback_find_zip_entry(
 		Some(s) => s,
 		None => return -1,
 	};
-	let entry_name_str = match unsafe { c_str_to_string(entry_name) } {
-		Some(s) => s,
-		None => return -1,
-	};
-	let file = match File::open(&zip_path_str) {
-		Ok(f) => f,
-		Err(_) => return -1,
-	};
+	let Some(entry_name_str) = (unsafe { c_str_to_string(entry_name) }) else { return -1 };
+	let Ok(file) = File::open(&zip_path_str) else { return -1 };
 	let Ok(mut archive) = ZipArchive::new(file) else { return -1 };
 	find_zip_entry(&mut archive, &entry_name_str).map_or(0, |index| {
 		unsafe { *out_index = index };

@@ -79,7 +79,7 @@ fn decode_utf32_be(input: &[u8]) -> String {
 }
 
 #[no_mangle]
-pub extern fn paperback_convert_to_utf8(input: *const u8, input_len: usize) -> *mut c_char {
+pub extern "C" fn paperback_convert_to_utf8(input: *const u8, input_len: usize) -> *mut c_char {
 	if input.is_null() || input_len == 0 {
 		return ptr::null_mut();
 	}

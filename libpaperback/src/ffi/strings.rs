@@ -9,19 +9,13 @@ pub unsafe fn c_str_to_string(ptr: *const c_char) -> Option<String> {
 	if ptr.is_null() {
 		return None;
 	}
-	match CStr::from_ptr(ptr).to_str() {
-		Ok(s) => Some(s.to_string()),
-		Err(_) => None,
-	}
+	CStr::from_ptr(ptr).to_str().map_or(None, |s| Some(s.to_string()))
 }
 
 #[must_use]
 pub fn string_to_c_str(s: String) -> *mut c_char {
 	let sanitized = s.replace('\0', " ");
-	match CString::new(sanitized) {
-		Ok(c_string) => c_string.into_raw(),
-		Err(_) => ptr::null_mut(),
-	}
+	CString::new(sanitized).map_or(ptr::null_mut(), std::ffi::CString::into_raw)
 }
 
 /// # Safety

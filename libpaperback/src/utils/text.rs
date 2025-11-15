@@ -43,7 +43,7 @@ pub fn trim_string(s: &str) -> String {
 // FFI exports
 
 #[no_mangle]
-pub extern fn paperback_remove_soft_hyphens(input: *const c_char) -> *mut c_char {
+pub extern "C" fn paperback_remove_soft_hyphens(input: *const c_char) -> *mut c_char {
 	let input_str = match unsafe { c_str_to_string(input) } {
 		Some(s) => s,
 		None => return std::ptr::null_mut(),
@@ -54,7 +54,7 @@ pub extern fn paperback_remove_soft_hyphens(input: *const c_char) -> *mut c_char
 }
 
 #[no_mangle]
-pub extern fn paperback_url_decode(encoded: *const c_char) -> *mut c_char {
+pub extern "C" fn paperback_url_decode(encoded: *const c_char) -> *mut c_char {
 	let encoded_str = match unsafe { c_str_to_string(encoded) } {
 		Some(s) => s,
 		None => return std::ptr::null_mut(),
@@ -65,7 +65,7 @@ pub extern fn paperback_url_decode(encoded: *const c_char) -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern fn paperback_collapse_whitespace(input: *const c_char) -> *mut c_char {
+pub extern "C" fn paperback_collapse_whitespace(input: *const c_char) -> *mut c_char {
 	let input_str = match unsafe { c_str_to_string(input) } {
 		Some(s) => s,
 		None => return std::ptr::null_mut(),
@@ -76,7 +76,7 @@ pub extern fn paperback_collapse_whitespace(input: *const c_char) -> *mut c_char
 }
 
 #[no_mangle]
-pub extern fn paperback_trim_string(input: *const c_char) -> *mut c_char {
+pub extern "C" fn paperback_trim_string(input: *const c_char) -> *mut c_char {
 	let input_str = match unsafe { c_str_to_string(input) } {
 		Some(s) => s,
 		None => return std::ptr::null_mut(),

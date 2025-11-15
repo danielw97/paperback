@@ -16,7 +16,7 @@ pub use update::{
 /// # Safety
 /// This function must only be called with a pointer returned by the Rust side that was allocated using `ffi::alloc_c_string` (or an equivalent function meant to pair with this deallocator). Passing any other pointer will result in undefined behavior.
 #[no_mangle]
-pub unsafe extern fn paperback_free_string(s: *mut c_char) {
+pub unsafe extern "C" fn paperback_free_string(s: *mut c_char) {
 	unsafe {
 		ffi::free_c_string(s);
 	}
