@@ -19,21 +19,19 @@ endif()
 
 find_program(CLANG_FORMAT_EXE NAMES clang-format)
 if(CLANG_FORMAT_EXE)
-	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
+	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/app/*.cpp ${CMAKE_SOURCE_DIR}/app/*.hpp ${CMAKE_SOURCE_DIR}/app/*.h)
 	add_custom_target(format COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 if(CLANG_TIDY_EXE)
-	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
-	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/paperback/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
+	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/app/*.cpp ${CMAKE_SOURCE_DIR}/app/*.hpp ${CMAKE_SOURCE_DIR}/app/*.h)
+	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/app/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
 endif()
 
 find_package(chmlib CONFIG REQUIRED)
 find_package(Gettext)
 find_package(lexbor CONFIG REQUIRED)
-find_package(maddy CONFIG REQUIRED)
 find_package(MbedTLS CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
 find_package(pdfium CONFIG REQUIRED)
 find_package(pugixml CONFIG REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
@@ -41,7 +39,7 @@ find_package(wxWidgets CONFIG REQUIRED)
 if(GETTEXT_FOUND)
 	find_program(XGETTEXT_EXECUTABLE NAMES xgettext)
 	if(XGETTEXT_EXECUTABLE)
-		file(GLOB_RECURSE TRANSLATABLE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
+		file(GLOB_RECURSE TRANSLATABLE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/app/*.cpp ${CMAKE_SOURCE_DIR}/app/*.hpp ${CMAKE_SOURCE_DIR}/app/*.h)
 		set(REL_TRANSLATABLE_FILES "")
 		foreach(F ${TRANSLATABLE_FILES})
 			file(RELATIVE_PATH F_REL "${CMAKE_SOURCE_DIR}" "${F}")
@@ -91,11 +89,8 @@ find_program(CARGO_BIN cargo)
 if(NOT CARGO_BIN)
 	message(FATAL_ERROR "cargo not found. Install Rust to build libpaperback.")
 endif()
-file(GLOB_RECURSE LIBPAPERBACK_SOURCES CONFIGURE_DEPENDS
-	${CMAKE_SOURCE_DIR}/libpaperback/src/*.rs
-	${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml
-	${CMAKE_SOURCE_DIR}/libpaperback/build.rs)
-set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/libpaperback)
+file(GLOB_RECURSE LIBPAPERBACK_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/lib/src/*.rs ${CMAKE_SOURCE_DIR}/lib/Cargo.toml ${CMAKE_SOURCE_DIR}/lib/build.rs)
+set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/lib)
 set(RUST_PROFILE_DIR $<IF:$<CONFIG:Debug>,debug,release>)
 if(WIN32)
 	set(RUST_LIB_NAME paperback.lib)
@@ -115,23 +110,23 @@ if(WIN32)
 	add_custom_command(
 		OUTPUT ${RUST_LIB_OUTPUT}
 		COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_BIN_DIR};$ENV{PATH}"
-			${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
+			${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
 		DEPENDS ${LIBPAPERBACK_SOURCES}
 		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 else()
 	add_custom_command(
 		OUTPUT ${RUST_LIB_OUTPUT}
-		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
+		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
 		DEPENDS ${LIBPAPERBACK_SOURCES}
 		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 endif()
 add_custom_target(libpaperback_rust DEPENDS ${RUST_LIB_OUTPUT})
 
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS paperback/*.cpp)
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS app/*.cpp)
 if(WIN32)
 	add_executable(paperback WIN32 ${SRC_FILES})
 else()
@@ -142,7 +137,7 @@ add_dependencies(paperback libpaperback_rust)
 # Include the cxx-generated headers directory
 # The headers are generated in the cargo OUT_DIR during the build
 target_include_directories(paperback PRIVATE
-	${CMAKE_SOURCE_DIR}/paperback
+	${CMAKE_SOURCE_DIR}/app
 	${CMAKE_SOURCE_DIR}
 	${RUST_TARGET_DIR}/cxxbridge
 )
@@ -151,7 +146,6 @@ target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
 	chmlib::chm
 	lexbor::lexbor
-	maddy::maddy
 	MbedTLS::mbedcrypto
 	pdfium::pdfium
 	pugixml::pugixml

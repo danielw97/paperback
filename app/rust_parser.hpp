@@ -1,4 +1,4 @@
-/* markdown_parser.hpp - markdown parser header file.
+/* rust_parser.hpp - adapter for Rust-based parsers.
  *
  * Paperback.
  * Copyright (c) 2025 Quin Gillespie.
@@ -9,33 +9,40 @@
 
 #pragma once
 #include "parser.hpp"
+#include <memory>
+#include <span>
+#include <string>
+#include <vector>
+#include <wx/string.h>
 
-class markdown_parser : public parser {
+/// Adapter class that wraps a Rust parser
+class rust_parser : public parser {
 public:
-	markdown_parser() = default;
-	~markdown_parser() = default;
-	markdown_parser(const markdown_parser&) = delete;
-	markdown_parser& operator=(const markdown_parser&) = delete;
-	markdown_parser(markdown_parser&&) = delete;
-	markdown_parser& operator=(markdown_parser&&) = delete;
+	rust_parser(wxString parser_name, std::vector<wxString> exts, parser_flags flags);
 
-	[[nodiscard]] wxString name() const override {
-		return "Markdown Documents";
-	}
-
-	[[nodiscard]] std::span<const wxString> extensions() const override {
-		static const wxString exts[] = {"md", "markdown", "mdx", "mdown", "mdwn", "mkd", "mkdn", "mkdown", "ronn"};
-		return exts;
-	}
-
-	[[nodiscard]] parser_flags supported_flags() const override {
-		return parser_flags::supports_toc;
-	}
-
+	[[nodiscard]] wxString name() const override;
+	[[nodiscard]] std::span<const wxString> extensions() const override;
 	[[nodiscard]] std::unique_ptr<document> load(const parser_context& ctx) const override;
+	[[nodiscard]] parser_flags supported_flags() const override;
 
 private:
-	static std::string preprocess_markdown(const std::string& input);
+	wxString parser_name_;
+	std::vector<wxString> extensions_;
+	parser_flags flags_;
 };
 
-REGISTER_PARSER(markdown_parser)
+// Text parser
+class rust_text_parser final : public rust_parser {
+public:
+	rust_text_parser();
+};
+
+// Markdown parser
+class rust_markdown_parser final : public rust_parser {
+public:
+	rust_markdown_parser();
+};
+
+// Register the Rust parsers
+REGISTER_PARSER(rust_text_parser)
+REGISTER_PARSER(rust_markdown_parser)

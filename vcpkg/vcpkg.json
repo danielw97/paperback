@@ -4,9 +4,7 @@
 	"dependencies": [
 		"chmlib",
 		"lexbor",
-		"maddy",
 		"mbedtls",
-		"nlohmann-json",
 		"pdfium",
 		"pugixml",
 		"wxwidgets"
