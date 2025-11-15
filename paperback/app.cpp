@@ -252,11 +252,9 @@ void app::open_file(const wxString& filename) {
 void app::check_for_updates(bool silent) {
 	const bool installer_build = is_installer_distribution();
 	const std::string current_version = std::string(APP_VERSION.ToUTF8());
-	const wxString user_agent_wx = wxString::Format("%s/%s", APP_NAME, APP_VERSION);
-	const std::string user_agent = std::string(user_agent_wx.ToUTF8());
-	std::thread([silent, installer_build, current_version, user_agent]() {
+	std::thread([silent, installer_build, current_version]() {
 		const auto flag = static_cast<uint8_t>(installer_build ? 1 : 0);
-		paperback_update_result* native_result = paperback_check_for_updates(current_version.c_str(), flag, user_agent.c_str());
+		paperback_update_result* native_result = paperback_check_for_updates(current_version.c_str(), flag);
 		update_result_payload payload = convert_result(native_result);
 		if (native_result != nullptr) {
 			paperback_free_update_result(native_result);

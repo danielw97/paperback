@@ -26,7 +26,7 @@ typedef struct paperback_update_result {
 	const char* error_message;
 } paperback_update_result;
 
-paperback_update_result* paperback_check_for_updates(const char* current_version, uint8_t is_installer, const char* user_agent);
+paperback_update_result* paperback_check_for_updates(const char* current_version, uint8_t is_installer);
 void paperback_free_update_result(paperback_update_result* result);
 
 #ifdef __cplusplus
