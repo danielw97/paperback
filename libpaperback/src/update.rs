@@ -1,4 +1,8 @@
-use std::{error::Error, fmt::{Display, Formatter, Result as FmtResult}, time::Duration};
+use std::{
+	error::Error,
+	fmt::{Display, Formatter, Result as FmtResult},
+	time::Duration,
+};
 
 use reqwest::blocking::Client;
 use semver::Version;
