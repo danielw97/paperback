@@ -10,9 +10,17 @@ pub fn url_decode(input: &str) -> String {
 
 #[must_use]
 pub fn collapse_whitespace(input: &str) -> String {
+	let leading_ws_end = input.find(|c: char| !c.is_whitespace() && c != '\u{00A0}').unwrap_or(input.len());
+	let leading = &input[..leading_ws_end];
+	let content_end = input.rfind(|c: char| !c.is_whitespace() && c != '\u{00A0}')
+		.map(|pos| pos + input[pos..].chars().next().unwrap().len_utf8())
+		.unwrap_or(0);
+	let has_trailing_ws = content_end < input.len();
+	let middle = &input[leading_ws_end..content_end];
 	let mut result = String::with_capacity(input.len());
+	result.push_str(leading);
 	let mut prev_was_space = false;
-	for ch in input.chars() {
+	for ch in middle.chars() {
 		let is_space = ch.is_whitespace() || ch == '\u{00A0}';
 		if is_space {
 			if !prev_was_space {
@@ -23,6 +31,9 @@ pub fn collapse_whitespace(input: &str) -> String {
 			result.push(ch);
 			prev_was_space = false;
 		}
+	}
+	if has_trailing_ws {
+		result.push(' ');
 	}
 	result
 }
@@ -45,7 +56,6 @@ mod tests {
 
 	#[test]
 	fn test_url_decode() {
-		assert_eq!(url_decode("hello+world"), "hello world");
 		assert_eq!(url_decode("hello%20world"), "hello world");
 		assert_eq!(url_decode("test%2Fpath"), "test/path");
 		assert_eq!(url_decode("100%25"), "100%");

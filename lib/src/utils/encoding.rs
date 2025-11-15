@@ -33,16 +33,17 @@ pub fn convert_to_utf8(input: &[u8]) -> String {
 	if let Ok(s) = String::from_utf8(input.to_vec()) {
 		return s;
 	}
+	// Try Windows-1252 before UTF-16 to prevent short ASCII-ish text from being misdetected as UTF-16
+	let (decoded, _, _) = WINDOWS_1252.decode(input);
+	if decoded.chars().any(|c| !c.is_control() || c.is_whitespace()) {
+		return decoded.to_string();
+	}
 	let (decoded, encoding, had_errors) = UTF_16LE.decode(input);
 	if !had_errors && encoding == UTF_16LE {
 		return decoded.to_string();
 	}
 	let (decoded, encoding, had_errors) = UTF_16BE.decode(input);
 	if !had_errors && encoding == UTF_16BE {
-		return decoded.to_string();
-	}
-	let (decoded, _, _) = WINDOWS_1252.decode(input);
-	if decoded.chars().any(|c| !c.is_control() || c.is_whitespace()) {
 		return decoded.to_string();
 	}
 	String::from_utf8_lossy(input).to_string()
