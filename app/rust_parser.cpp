@@ -15,6 +15,38 @@
 #include <stdexcept>
 #include <wx/translation.h>
 
+namespace {
+wxString to_wxstring(const rust::String& rust_str) {
+	return wxString::FromUTF8(std::string(rust_str).c_str());
+}
+
+void populate_markers(document_buffer& buffer, const rust::Vec<FfiMarker>& ffi_markers) {
+	for (const auto& rust_marker : ffi_markers) {
+		const auto marker_type_value = static_cast<marker_type>(rust_marker.marker_type);
+		const wxString text = to_wxstring(rust_marker.text);
+		const wxString ref = to_wxstring(rust_marker.reference);
+		buffer.add_marker(rust_marker.position, marker_type_value, text, ref, rust_marker.level);
+	}
+	buffer.finalize_markers();
+}
+
+void populate_toc_items(std::vector<std::unique_ptr<toc_item>>& toc_items, const rust::Vec<FfiTocItem>& ffi_toc_items) {
+	for (const auto& rust_toc : ffi_toc_items) {
+		auto item = std::make_unique<toc_item>();
+		item->name = to_wxstring(rust_toc.name);
+		item->ref = to_wxstring(rust_toc.reference);
+		item->offset = rust_toc.offset;
+		toc_items.push_back(std::move(item));
+	}
+}
+
+void populate_stats(document_stats& stats, const FfiDocumentStats& ffi_stats) {
+	stats.word_count = ffi_stats.word_count;
+	stats.line_count = ffi_stats.line_count;
+	stats.char_count = ffi_stats.char_count;
+}
+} // anonymous namespace
+
 rust_parser::rust_parser(wxString parser_name, std::vector<wxString> exts, parser_flags flags) : parser_name_{std::move(parser_name)}, extensions_{std::move(exts)}, flags_{flags} {
 }
 
@@ -36,28 +68,12 @@ std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 		const std::string password = ctx.password.value_or("");
 		const auto ffi_doc = parse_document(rust::Str(file_path), rust::Str(password));
 		auto doc = std::make_unique<document>();
-		doc->title = wxString::FromUTF8(std::string(ffi_doc.title).c_str());
-		doc->author = wxString::FromUTF8(std::string(ffi_doc.author).c_str());
-		doc->buffer.set_content(wxString::FromUTF8(std::string(ffi_doc.content).c_str()));
-		for (const auto& rust_marker : ffi_doc.markers) {
-			const auto marker_type_value = static_cast<marker_type>(rust_marker.marker_type);
-			const wxString text = wxString::FromUTF8(std::string(rust_marker.text).c_str());
-			const wxString ref = wxString::FromUTF8(std::string(rust_marker.reference).c_str());
-			doc->buffer.add_marker(rust_marker.position, marker_type_value, text, ref, rust_marker.level);
-		}
-		doc->buffer.finalize_markers();
-		// Note: For now, we're adding them as flat items
-		// A more sophisticated approach would reconstruct the hierarchy
-		for (const auto& rust_toc : ffi_doc.toc_items) {
-			auto item = std::make_unique<toc_item>();
-			item->name = wxString::FromUTF8(std::string(rust_toc.name).c_str());
-			item->ref = wxString::FromUTF8(std::string(rust_toc.reference).c_str());
-			item->offset = rust_toc.offset;
-			doc->toc_items.push_back(std::move(item));
-		}
-		doc->stats.word_count = ffi_doc.stats.word_count;
-		doc->stats.line_count = ffi_doc.stats.line_count;
-		doc->stats.char_count = ffi_doc.stats.char_count;
+		doc->title = to_wxstring(ffi_doc.title);
+		doc->author = to_wxstring(ffi_doc.author);
+		doc->buffer.set_content(to_wxstring(ffi_doc.content));
+		populate_markers(doc->buffer, ffi_doc.markers);
+		populate_toc_items(doc->toc_items, ffi_doc.toc_items);
+		populate_stats(doc->stats, ffi_doc.stats);
 		return doc;
 	} catch (const std::exception& e) {
 		throw parser_exception(wxString::FromUTF8(e.what()), ctx.file_path);

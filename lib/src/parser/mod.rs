@@ -5,6 +5,7 @@ use crate::document::{Document, ParserContext, ParserFlags};
 pub mod html;
 pub mod markdown;
 pub mod text;
+mod utils;
 
 pub trait Parser: Send + Sync {
 	fn name(&self) -> &str;

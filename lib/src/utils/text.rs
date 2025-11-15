@@ -12,7 +12,8 @@ pub fn url_decode(input: &str) -> String {
 pub fn collapse_whitespace(input: &str) -> String {
 	let leading_ws_end = input.find(|c: char| !c.is_whitespace() && c != '\u{00A0}').unwrap_or(input.len());
 	let leading = &input[..leading_ws_end];
-	let content_end = input.rfind(|c: char| !c.is_whitespace() && c != '\u{00A0}')
+	let content_end = input
+		.rfind(|c: char| !c.is_whitespace() && c != '\u{00A0}')
 		.map(|pos| pos + input[pos..].chars().next().unwrap().len_utf8())
 		.unwrap_or(0);
 	let has_trailing_ws = content_end < input.len();
