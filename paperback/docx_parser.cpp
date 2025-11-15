@@ -23,8 +23,6 @@
 #include <wx/filename.h>
 #include <wx/string.h>
 #include <wx/translation.h>
-#include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 inline const char* WORDML_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 inline const char* REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -39,28 +37,9 @@ static std::string get_local_name(const char* qname) {
 }
 
 std::unique_ptr<document> docx_parser::load(const parser_context& ctx) const {
-	auto fp = std::make_unique<wxFileInputStream>(ctx.file_path);
-	if (!fp->IsOk()) {
-		return nullptr;
-	}
-	wxZipInputStream zip(*fp);
-	if (!zip.IsOk()) {
-		return nullptr;
-	}
-	std::string rels_content;
-	std::string doc_content;
-	std::unique_ptr<wxZipEntry> entry;
-	while ((entry.reset(zip.GetNextEntry())), entry != nullptr) {
-		const std::string entry_name = entry->GetInternalName().ToStdString();
-		if (entry_name == "word/_rels/document.xml.rels") {
-			rels_content = read_zip_entry(zip);
-		} else if (entry_name == "word/document.xml") {
-			doc_content = read_zip_entry(zip);
-		}
-		if (!rels_content.empty() && !doc_content.empty()) {
-			break;
-		}
-	}
+	const std::string file_path = ctx.file_path.ToStdString();
+	const std::string rels_content = read_zip_entry(file_path, "word/_rels/document.xml.rels");
+	const std::string doc_content = read_zip_entry(file_path, "word/document.xml");
 	if (doc_content.empty()) {
 		return nullptr;
 	}

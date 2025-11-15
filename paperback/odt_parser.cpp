@@ -19,8 +19,6 @@
 #include <wx/filename.h>
 #include <wx/string.h>
 #include <wx/translation.h>
-#include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 static std::string get_local_name(const char* qname) {
 	if (!qname) {
@@ -32,19 +30,8 @@ static std::string get_local_name(const char* qname) {
 }
 
 std::unique_ptr<document> odt_parser::load(const parser_context& ctx) const {
-	wxFileInputStream file_stream(ctx.file_path);
-	if (!file_stream.IsOk()) {
-		throw parser_exception(_("Failed to open ODT file"), ctx.file_path);
-	}
-	wxZipInputStream zip_stream(file_stream);
-	std::unique_ptr<wxZipEntry> entry;
-	std::string content;
-	while (entry.reset(zip_stream.GetNextEntry()), entry != nullptr) {
-		if (entry->GetName() == "content.xml") {
-			content = read_zip_entry(zip_stream);
-			break;
-		}
-	}
+	const std::string file_path = ctx.file_path.ToStdString();
+	const std::string content = read_zip_entry(file_path, "content.xml");
 	if (content.empty()) {
 		throw parser_exception(_("ODT file does not contain content.xml or it is empty"), ctx.file_path);
 	}

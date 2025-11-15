@@ -27,7 +27,6 @@
 #include <wx/defs.h>
 #include <wx/strconv.h>
 #include <wx/string.h>
-#include <wx/zipstrm.h>
 
 namespace {
 constexpr unsigned char UTF8_NBSP_FIRST = 0xC2;
@@ -248,50 +247,18 @@ std::vector<std::unique_ptr<toc_item>> build_toc_from_headings(const document_bu
 	return result;
 }
 
-std::string read_zip_entry(wxZipInputStream& zip) {
-	constexpr int buffer_size = 4096;
-	std::ostringstream buffer;
-	char buf[buffer_size];
-	while (zip.Read(buf, sizeof(buf)).LastRead() > 0) {
-		buffer.write(buf, static_cast<std::streamsize>(zip.LastRead()));
+std::string read_zip_entry(const std::string& zip_path, const std::string& entry_name) {
+	try {
+		return std::string(::read_zip_entry(rust::Str(zip_path), rust::Str(entry_name)));
+	} catch (const std::exception&) {
+		return {};
 	}
-	return buffer.str();
 }
 
-wxZipEntry* find_zip_entry(const std::string& filename, const std::map<std::string, std::unique_ptr<wxZipEntry>>& entries) {
-	auto it = entries.find(filename);
-	if (it != entries.end()) {
-		return it->second.get();
+size_t find_zip_entry(const std::string& zip_path, const std::string& entry_name) {
+	try {
+		return ::find_zip_entry(rust::Str(zip_path), rust::Str(entry_name));
+	} catch (const std::exception&) {
+		return static_cast<size_t>(-1);
 	}
-	std::string decoded = url_decode(std::string_view(filename));
-	if (decoded != filename) {
-		it = entries.find(decoded);
-		if (it != entries.end()) {
-			return it->second.get();
-		}
-	}
-	auto url_encode = [](std::string_view in) {
-		static const char hex[] = "0123456789ABCDEF";
-		std::string out;
-		out.reserve(in.size());
-		for (unsigned char ch : in) {
-			bool unreserved = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.' || ch == '~' || ch == '/' || ch == ':';
-			if (unreserved) {
-				out.push_back(static_cast<char>(ch));
-			} else {
-				out.push_back('%');
-				out.push_back(hex[(ch >> 4) & 0xF]);
-				out.push_back(hex[ch & 0xF]);
-			}
-		}
-		return out;
-	};
-	std::string encoded = url_encode(filename);
-	if (encoded != filename) {
-		it = entries.find(encoded);
-		if (it != entries.end()) {
-			return it->second.get();
-		}
-	}
-	return nullptr;
 }

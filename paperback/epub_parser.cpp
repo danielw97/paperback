@@ -28,34 +28,16 @@
 #include <wx/filename.h>
 #include <wx/string.h>
 #include <wx/translation.h>
-#include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 namespace fs = std::filesystem;
 
 std::unique_ptr<document> epub_parser::load(const parser_context& ctx) const {
-	auto fp = std::make_unique<wxFileInputStream>(ctx.file_path);
-	if (!fp->IsOk()) {
+	const std::string file_path = ctx.file_path.ToStdString();
+	epub_context epub_ctx(file_path);
+	const std::string container_content = read_zip_entry(file_path, "META-INF/container.xml");
+	if (container_content.empty()) {
 		return nullptr;
 	}
-	wxZipInputStream zip_index(*fp);
-	std::map<std::string, std::unique_ptr<wxZipEntry>> entries;
-	while (wxZipEntry* entry = zip_index.GetNextEntry()) {
-		const std::string name = entry->GetName(wxPATH_UNIX).ToStdString();
-		entries[name] = std::unique_ptr<wxZipEntry>(entry);
-	}
-	fp->SeekI(0);
-	epub_context epub_ctx(*fp);
-	epub_ctx.zip_entries = std::move(entries);
-	wxZipEntry* container_entry = find_zip_entry("META-INF/container.xml", epub_ctx.zip_entries);
-	if (container_entry == nullptr) {
-		return nullptr;
-	}
-	wxZipInputStream container_zip(*fp);
-	if (!container_zip.OpenEntry(*container_entry)) {
-		return nullptr;
-	}
-	const std::string container_content = read_zip_entry(container_zip);
 	pugi::xml_document doc;
 	if (!doc.load_buffer(container_content.data(), container_content.size())) {
 		return nullptr;
@@ -104,16 +86,10 @@ std::unique_ptr<document> epub_parser::load(const parser_context& ctx) const {
 }
 
 void epub_parser::parse_opf(const std::string& filename, epub_context& epub_ctx) {
-	wxZipEntry* opf_entry = find_zip_entry(filename, epub_ctx.zip_entries);
-	if (opf_entry == nullptr) {
+	const std::string opf_content = read_zip_entry(epub_ctx.file_path, filename);
+	if (opf_content.empty()) {
 		throw parser_exception("No OPF file found");
 	}
-	epub_ctx.file_stream.SeekI(0);
-	wxZipInputStream zis(epub_ctx.file_stream);
-	if (!zis.OpenEntry(*opf_entry)) {
-		throw parser_exception("Failed to open OPF file");
-	}
-	const std::string opf_content = read_zip_entry(zis);
 	pugi::xml_document doc;
 	if (!doc.load_buffer(opf_content.data(), opf_content.size())) {
 		throw parser_exception("Invalid OPF");
@@ -239,16 +215,10 @@ void epub_parser::parse_section(size_t index, epub_context& epub_ctx, document_b
 	const auto& manifest_item = it->second;
 	const auto& href = manifest_item.path;
 	const auto& media_type = manifest_item.media_type;
-	wxZipEntry* section_entry = find_zip_entry(href, epub_ctx.zip_entries);
-	if (section_entry == nullptr) {
+	const std::string content = read_zip_entry(epub_ctx.file_path, href);
+	if (content.empty()) {
 		return;
 	}
-	epub_ctx.file_stream.SeekI(0);
-	wxZipInputStream zis(epub_ctx.file_stream);
-	if (!zis.OpenEntry(*section_entry)) {
-		return;
-	}
-	const std::string content = read_zip_entry(zis);
 	if (is_html_content(media_type)) {
 		html_to_text converter;
 		process_section_content(converter, content, href, epub_ctx, buffer);
@@ -286,16 +256,10 @@ void epub_parser::parse_epub2_ncx(const std::string& ncx_id, const epub_context&
 		return;
 	}
 	const auto& ncx_file = it->second.path;
-	wxZipEntry* ncx_entry = find_zip_entry(ncx_file, epub_ctx.zip_entries);
-	if (ncx_entry == nullptr) {
+	const std::string ncx_content = read_zip_entry(epub_ctx.file_path, ncx_file);
+	if (ncx_content.empty()) {
 		return;
 	}
-	epub_ctx.file_stream.SeekI(0);
-	wxZipInputStream zis(epub_ctx.file_stream);
-	if (!zis.OpenEntry(*ncx_entry)) {
-		return;
-	}
-	const std::string ncx_content = read_zip_entry(zis);
 	pugi::xml_document doc;
 	if (!doc.load_buffer(ncx_content.data(), ncx_content.size())) {
 		return;
@@ -340,16 +304,10 @@ void epub_parser::parse_epub3_nav(const std::string& nav_id, const epub_context&
 	}
 	const auto& nav_file = it->second.path;
 	std::string nav_base_dir = nav_file.substr(0, nav_file.find_last_of('/'));
-	wxZipEntry* nav_entry = find_zip_entry(nav_file, epub_ctx.zip_entries);
-	if (nav_entry == nullptr) {
+	const std::string nav_content = read_zip_entry(epub_ctx.file_path, nav_file);
+	if (nav_content.empty()) {
 		return;
 	}
-	epub_ctx.file_stream.SeekI(0);
-	wxZipInputStream zis(epub_ctx.file_stream);
-	if (!zis.OpenEntry(*nav_entry)) {
-		return;
-	}
-	const std::string nav_content = read_zip_entry(zis);
 	pugi::xml_document doc;
 	if (!doc.load_buffer(nav_content.data(), nav_content.size())) {
 		return;

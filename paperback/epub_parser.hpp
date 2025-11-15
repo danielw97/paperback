@@ -17,8 +17,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 struct epub_section {
 	std::vector<std::string> lines;
@@ -55,8 +53,7 @@ public:
 
 private:
 	struct epub_context {
-		wxFileInputStream& file_stream;
-		std::map<std::string, std::unique_ptr<wxZipEntry>> zip_entries;
+		std::string file_path;
 		std::map<std::string, manifest_item> manifest_items;
 		std::vector<std::string> spine_items;
 		std::map<std::string, std::map<std::string, size_t>> id_positions;
@@ -66,7 +63,7 @@ private:
 		std::string toc_ncx_id;
 		std::string nav_doc_id;
 
-		epub_context(wxFileInputStream& fs) : file_stream(fs) {
+		epub_context(const std::string& path) : file_path(path) {
 		}
 
 		~epub_context() = default;

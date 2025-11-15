@@ -27,8 +27,6 @@
 #include <wx/filename.h>
 #include <wx/string.h>
 #include <wx/translation.h>
-#include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 inline const char* DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 inline const char* REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -44,36 +42,31 @@ static std::string get_local_name(const char* qname) {
 
 std::unique_ptr<document> pptx_parser::load(const parser_context& ctx) const {
 	try {
-		auto fp = std::make_unique<wxFileInputStream>(ctx.file_path);
-		if (!fp->IsOk()) {
-			return nullptr;
-		}
-		wxZipInputStream zip(*fp);
-		if (!zip.IsOk()) {
-			return nullptr;
-		}
+		const std::string file_path = ctx.file_path.ToStdString();
 		std::map<std::string, std::string> slide_contents;
 		std::map<std::string, std::string> slide_rels;
-		std::unique_ptr<wxZipEntry> entry;
-		while ((entry.reset(zip.GetNextEntry())), entry != nullptr) {
-			const std::string name = entry->GetInternalName().ToStdString();
-			if (name.starts_with("ppt/slides/slide") && name.ends_with(".xml")) {
-				if (name.find("slideLayout") == std::string::npos && name.find("slideMaster") == std::string::npos) {
-					const std::string content = read_zip_entry(zip);
-					if (!content.empty()) {
-						slide_contents[name] = content;
-					}
-				}
-			} else if (name.starts_with("ppt/slides/_rels/slide") && name.ends_with(".xml.rels")) {
-				std::string content = read_zip_entry(zip);
-				if (!content.empty()) {
-					slide_rels[name] = std::move(content);
-				}
+
+		// Try reading slides sequentially (slide1.xml, slide2.xml, etc.)
+		for (int slide_num = 1; slide_num <= 1000; ++slide_num) {
+			const std::string slide_name = "ppt/slides/slide" + std::to_string(slide_num) + ".xml";
+			const std::string content = read_zip_entry(file_path, slide_name);
+			if (content.empty()) {
+				break; // No more slides
+			}
+			slide_contents[slide_name] = content;
+
+			// Try to read the corresponding rels file
+			const std::string rels_name = "ppt/slides/_rels/slide" + std::to_string(slide_num) + ".xml.rels";
+			const std::string rels_content = read_zip_entry(file_path, rels_name);
+			if (!rels_content.empty()) {
+				slide_rels[rels_name] = rels_content;
 			}
 		}
+
 		if (slide_contents.empty()) {
 			return nullptr;
 		}
+
 		std::vector<std::string> slide_files;
 		slide_files.reserve(slide_contents.size());
 		for (const auto& [name, content] : slide_contents) {
