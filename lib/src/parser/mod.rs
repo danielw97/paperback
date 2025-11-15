@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::OnceLock};
 
 use crate::document::{Document, ParserContext, ParserFlags};
 
+pub mod html;
 pub mod markdown;
 pub mod text;
 
@@ -59,6 +60,7 @@ impl ParserRegistry {
 			let mut registry = ParserRegistry::new();
 			registry.register(text::TextParser);
 			registry.register(markdown::MarkdownParser);
+			registry.register(html::HtmlParser);
 			registry
 		})
 	}

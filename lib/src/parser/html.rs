@@ -1,7 +1,5 @@
 use std::{fs, path::Path};
 
-use pulldown_cmark::html::push_html;
-
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
 	parser::Parser,
@@ -11,15 +9,15 @@ use crate::{
 	},
 };
 
-pub struct MarkdownParser;
+pub struct HtmlParser;
 
-impl Parser for MarkdownParser {
+impl Parser for HtmlParser {
 	fn name(&self) -> &str {
-		"Markdown Files"
+		"HTML Files"
 	}
 
 	fn extensions(&self) -> &[&str] {
-		&["md", "markdown", "mdown", "mkdn", "mkd"]
+		&["htm", "html", "xhtml"]
 	}
 
 	fn supported_flags(&self) -> ParserFlags {
@@ -28,20 +26,21 @@ impl Parser for MarkdownParser {
 
 	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
 		let bytes = fs::read(&context.file_path)
-			.map_err(|e| format!("Failed to open Markdown file '{}': {}", context.file_path, e))?;
+			.map_err(|e| format!("Failed to open HTML file '{}': {}", context.file_path, e))?;
 		if bytes.is_empty() {
-			return Err(format!("Markdown file is empty: {}", context.file_path));
+			return Err(format!("HTML file is empty: {}", context.file_path));
 		}
-		let markdown_content = convert_to_utf8(&bytes);
-		let parser = pulldown_cmark::Parser::new(&markdown_content);
-		let mut html_content = String::new();
-		push_html(&mut html_content, parser);
+		let html_content = convert_to_utf8(&bytes);
 		let mut converter = HtmlToText::new();
-		if !converter.convert(&html_content, HtmlSourceMode::Markdown) {
-			return Err(format!("Failed to convert Markdown to text: {}", context.file_path));
+		if !converter.convert(&html_content, HtmlSourceMode::NativeHtml) {
+			return Err(format!("Failed to convert HTML to text: {}", context.file_path));
 		}
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let extracted_title = converter.get_title();
+		let title = if extracted_title.is_empty() {
+			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string()
+		} else {
+			extracted_title.to_string()
+		};
 		let text = converter.get_text();
 		let mut buffer = DocumentBuffer::with_content(text);
 		let id_positions = converter.get_id_positions().clone();

@@ -724,6 +724,7 @@ dependencies = [
  "bitflags",
  "cxx",
  "cxx-build",
+ "ego-tree",
  "encoding_rs",
  "percent-encoding",
  "pulldown-cmark",
