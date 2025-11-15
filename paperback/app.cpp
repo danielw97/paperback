@@ -9,11 +9,92 @@
 
 #include "app.hpp"
 #include "constants.hpp"
+#include "libpaperback.h"
 #include "parser.hpp"
 #include "translation_manager.hpp"
-#include "update_checker.hpp"
 #include "utils.hpp"
+#include <cstdint>
+#include <string>
+#include <thread>
+#include <utility>
 #include <wx/filename.h>
+#include <wx/msgdlg.h>
+#include <wx/stdpaths.h>
+#include <wx/utils.h>
+
+namespace {
+struct update_result_payload {
+	paperback_update_status status{PAPERBACK_UPDATE_STATUS_INTERNAL_ERROR};
+	int http_status{0};
+	std::string latest_version;
+	std::string download_url;
+	std::string release_notes;
+	std::string error_message;
+};
+
+std::string copy_c_string(const char* value) {
+	if (value == nullptr) {
+		return {};
+	}
+	return std::string(value);
+}
+
+update_result_payload convert_result(const paperback_update_result* native_result) {
+	update_result_payload payload;
+	if (native_result == nullptr) {
+		payload.error_message = "Update service returned no result.";
+		return payload;
+	}
+	payload.status = native_result->status;
+	payload.http_status = native_result->http_status;
+	payload.latest_version = copy_c_string(native_result->latest_version);
+	payload.download_url = copy_c_string(native_result->download_url);
+	payload.release_notes = copy_c_string(native_result->release_notes);
+	payload.error_message = copy_c_string(native_result->error_message);
+	return payload;
+}
+
+bool is_installer_distribution() {
+	wxFileName exe_path(wxStandardPaths::Get().GetExecutablePath());
+	const wxString uninstaller_path = exe_path.GetPath() + wxFileName::GetPathSeparator() + "unins000.exe";
+	return wxFileName::FileExists(uninstaller_path);
+}
+
+void present_update_result(const update_result_payload& payload, bool silent) {
+	switch (payload.status) {
+	case PAPERBACK_UPDATE_STATUS_AVAILABLE: {
+		const wxString latest_version = payload.latest_version.empty() ? APP_VERSION : wxString::FromUTF8(payload.latest_version.c_str());
+		const wxString release_notes = payload.release_notes.empty() ? _("No release notes were provided.") : wxString::FromUTF8(payload.release_notes.c_str());
+		const wxString message = wxString::Format(_("There is an update available.\nYour version: %s\nLatest version: %s\nDescription:\n%s\nDo you want to open the direct download link?"), APP_VERSION, latest_version, release_notes);
+		const int res = wxMessageBox(message, _("Update available"), wxYES_NO | wxICON_INFORMATION);
+		if (res == wxYES && !payload.download_url.empty()) {
+			wxLaunchDefaultBrowser(wxString::FromUTF8(payload.download_url.c_str()));
+		}
+		break;
+	}
+	case PAPERBACK_UPDATE_STATUS_UP_TO_DATE:
+		if (!silent) {
+			wxMessageBox(_("No updates available."), _("Info"), wxICON_INFORMATION);
+		}
+		break;
+	default:
+		if (silent) {
+			break;
+		}
+		wxString details;
+		if (!payload.error_message.empty()) {
+			details = wxString::FromUTF8(payload.error_message.c_str());
+		} else {
+			details = _("Error checking for updates.");
+		}
+		if (payload.status == PAPERBACK_UPDATE_STATUS_HTTP_ERROR && payload.http_status > 0) {
+			details = wxString::Format(_("Failed to check for updates. HTTP status: %d"), payload.http_status);
+		}
+		wxMessageBox(details, _("Error"), wxICON_ERROR);
+		break;
+	}
+}
+} // namespace
 
 bool paperback_connection::OnExec(const wxString& topic, const wxString& data) {
 	if (topic == IPC_TOPIC_OPEN_FILE) {
@@ -166,6 +247,28 @@ void app::open_file(const wxString& filename) {
 	}
 	frame->Raise();
 	frame->RequestUserAttention();
+}
+
+void app::check_for_updates(bool silent) {
+	const bool installer_build = is_installer_distribution();
+	const std::string current_version = std::string(APP_VERSION.ToUTF8());
+	const wxString user_agent_wx = wxString::Format("%s/%s", APP_NAME, APP_VERSION);
+	const std::string user_agent = std::string(user_agent_wx.ToUTF8());
+	std::thread([silent, installer_build, current_version, user_agent]() {
+		const auto flag = static_cast<uint8_t>(installer_build ? 1 : 0);
+		paperback_update_result* native_result = paperback_check_for_updates(current_version.c_str(), flag, user_agent.c_str());
+		update_result_payload payload = convert_result(native_result);
+		if (native_result != nullptr) {
+			paperback_free_update_result(native_result);
+		}
+		auto* wx_app = wxTheApp;
+		if (wx_app == nullptr) {
+			return;
+		}
+		wx_app->CallAfter([silent, payload = std::move(payload)]() {
+			present_update_result(payload, silent);
+		});
+	}).detach();
 }
 
 wxIMPLEMENT_APP(app);

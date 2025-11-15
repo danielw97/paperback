@@ -19,13 +19,13 @@ endif()
 
 find_program(CLANG_FORMAT_EXE NAMES clang-format)
 if(CLANG_FORMAT_EXE)
-	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.hpp)
+	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
 	add_custom_target(format COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 if(CLANG_TIDY_EXE)
-	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.hpp)
-	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/src/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
+	file(GLOB_RECURSE ALL_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
+	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/paperback/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
 endif()
 
 find_package(chmlib CONFIG REQUIRED)
@@ -41,7 +41,7 @@ find_package(wxWidgets CONFIG REQUIRED)
 if(GETTEXT_FOUND)
 	find_program(XGETTEXT_EXECUTABLE NAMES xgettext)
 	if(XGETTEXT_EXECUTABLE)
-		file(GLOB_RECURSE TRANSLATABLE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.hpp)
+		file(GLOB_RECURSE TRANSLATABLE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/paperback/*.cpp ${CMAKE_SOURCE_DIR}/paperback/*.hpp ${CMAKE_SOURCE_DIR}/paperback/*.h)
 		set(REL_TRANSLATABLE_FILES "")
 		foreach(F ${TRANSLATABLE_FILES})
 			file(RELATIVE_PATH F_REL "${CMAKE_SOURCE_DIR}" "${F}")
@@ -87,13 +87,52 @@ else()
 	message(WARNING "Gettext not found. Translations will not be built.")
 endif()
 
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/*.cpp)
+find_program(CARGO_BIN cargo)
+if(NOT CARGO_BIN)
+	message(FATAL_ERROR "cargo not found. Install Rust to build libpaperback.")
+endif()
+file(GLOB_RECURSE LIBPAPERBACK_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/libpaperback/src/*.rs ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml)
+set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/libpaperback)
+set(RUST_PROFILE_DIR $<IF:$<CONFIG:Debug>,debug,release>)
+if(WIN32)
+	set(RUST_LIB_NAME paperback.lib)
+else()
+	set(RUST_LIB_NAME libpaperback.a)
+endif()
+set(RUST_LIB_OUTPUT ${RUST_TARGET_DIR}/${RUST_PROFILE_DIR}/${RUST_LIB_NAME})
+if(WIN32)
+	# On Windows, we need to ensure cargo uses the correct MSVC linker, not Git's MSYS link.exe
+	# Find the Visual Studio environment
+	get_filename_component(MSVC_BIN_DIR ${CMAKE_LINKER} DIRECTORY)
+	add_custom_command(
+		OUTPUT ${RUST_LIB_OUTPUT}
+		COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_BIN_DIR};$ENV{PATH}"
+			${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
+		DEPENDS ${LIBPAPERBACK_SOURCES}
+		COMMENT "Building libpaperback Rust crate"
+	)
+else()
+	add_custom_command(
+		OUTPUT ${RUST_LIB_OUTPUT}
+		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
+		DEPENDS ${LIBPAPERBACK_SOURCES}
+		COMMENT "Building libpaperback Rust crate"
+	)
+endif()
+add_custom_target(libpaperback_rust DEPENDS ${RUST_LIB_OUTPUT})
+
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS paperback/*.cpp)
 if(WIN32)
 	add_executable(paperback WIN32 ${SRC_FILES})
 else()
 	add_executable(paperback ${SRC_FILES})
 endif()
+add_dependencies(paperback libpaperback_rust)
+target_include_directories(paperback PRIVATE ${CMAKE_SOURCE_DIR}/paperback)
 target_link_libraries(paperback PRIVATE
+	${RUST_LIB_OUTPUT}
 	chmlib::chm
 	lexbor::lexbor
 	maddy::maddy
@@ -104,6 +143,16 @@ target_link_libraries(paperback PRIVATE
 	wx::core
 	wx::net
 )
+
+# Add Windows system libraries required by Rust standard library
+if(WIN32)
+	target_link_libraries(paperback PRIVATE
+		userenv.lib
+		ntdll.lib
+		ws2_32.lib
+		bcrypt.lib
+	)
+endif()
 
 if (MSVC)
 	target_compile_options(paperback PRIVATE /W4 /permissive- /WX)

@@ -43,6 +43,7 @@ public:
 		return config_mgr;
 	}
 	void open_file(const wxString& filename);
+	void check_for_updates(bool silent);
 
 private:
 	main_window* frame{nullptr};

@@ -1,3 +1,4 @@
 build/
+libpaperback/target/
 vcpkg/bin/
 web/_site/

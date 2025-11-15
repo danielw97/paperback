@@ -15,7 +15,6 @@
 #include "menu_builder.hpp"
 #include "parser.hpp"
 #include "translation_manager.hpp"
-#include "update_checker.hpp"
 #include "utils.hpp"
 #include <wx/aboutdlg.h>
 #include <wx/filename.h>
@@ -910,7 +909,7 @@ void main_window::on_donate(wxCommandEvent&) {
 }
 
 void main_window::on_check_for_updates(wxCommandEvent&) {
-	check_for_updates(false);
+	wxGetApp().check_for_updates(false);
 }
 
 void main_window::on_sleep_timer(wxCommandEvent&) {
