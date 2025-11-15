@@ -91,15 +91,23 @@ find_program(CARGO_BIN cargo)
 if(NOT CARGO_BIN)
 	message(FATAL_ERROR "cargo not found. Install Rust to build libpaperback.")
 endif()
-file(GLOB_RECURSE LIBPAPERBACK_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/libpaperback/src/*.rs ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml)
+file(GLOB_RECURSE LIBPAPERBACK_SOURCES CONFIGURE_DEPENDS
+	${CMAKE_SOURCE_DIR}/libpaperback/src/*.rs
+	${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml
+	${CMAKE_SOURCE_DIR}/libpaperback/build.rs)
 set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/libpaperback)
 set(RUST_PROFILE_DIR $<IF:$<CONFIG:Debug>,debug,release>)
 if(WIN32)
 	set(RUST_LIB_NAME paperback.lib)
+	set(CXX_BRIDGE_LIB cxxbridge1.lib)
 else()
 	set(RUST_LIB_NAME libpaperback.a)
+	set(CXX_BRIDGE_LIB libcxxbridge1.a)
 endif()
 set(RUST_LIB_OUTPUT ${RUST_TARGET_DIR}/${RUST_PROFILE_DIR}/${RUST_LIB_NAME})
+set(CXX_BRIDGE_OUTPUT ${RUST_TARGET_DIR}/${RUST_PROFILE_DIR}/build/libpaperback-*/out/${CXX_BRIDGE_LIB})
+
+# The cxx-build generates headers during the cargo build
 if(WIN32)
 	# On Windows, we need to ensure cargo uses the correct MSVC linker, not Git's MSYS link.exe
 	# Find the Visual Studio environment
@@ -110,7 +118,7 @@ if(WIN32)
 			${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
 		DEPENDS ${LIBPAPERBACK_SOURCES}
-		COMMENT "Building libpaperback Rust crate"
+		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 else()
 	add_custom_command(
@@ -118,7 +126,7 @@ else()
 		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/libpaperback/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/libpaperback
 		DEPENDS ${LIBPAPERBACK_SOURCES}
-		COMMENT "Building libpaperback Rust crate"
+		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 endif()
 add_custom_target(libpaperback_rust DEPENDS ${RUST_LIB_OUTPUT})
@@ -130,7 +138,15 @@ else()
 	add_executable(paperback ${SRC_FILES})
 endif()
 add_dependencies(paperback libpaperback_rust)
-target_include_directories(paperback PRIVATE ${CMAKE_SOURCE_DIR}/paperback)
+
+# Include the cxx-generated headers directory
+# The headers are generated in the cargo OUT_DIR during the build
+target_include_directories(paperback PRIVATE
+	${CMAKE_SOURCE_DIR}/paperback
+	${CMAKE_SOURCE_DIR}
+	${RUST_TARGET_DIR}/cxxbridge
+)
+
 target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
 	chmlib::chm
@@ -143,6 +159,15 @@ target_link_libraries(paperback PRIVATE
 	wx::core
 	wx::net
 )
+
+# Link required system libraries for Rust/cxx on different platforms
+if(WIN32)
+	target_link_libraries(paperback PRIVATE ws2_32 userenv bcrypt ntdll)
+elseif(APPLE)
+	target_link_libraries(paperback PRIVATE "-framework Security" "-framework CoreFoundation")
+else()
+	target_link_libraries(paperback PRIVATE pthread dl)
+endif()
 
 if (MSVC)
 	target_compile_options(paperback PRIVATE /W4 /permissive- /WX)

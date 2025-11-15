@@ -9,7 +9,7 @@
 
 #include "app.hpp"
 #include "constants.hpp"
-#include "libpaperback.h"
+#include "libpaperback/src/bridge.rs.h"
 #include "parser.hpp"
 #include "translation_manager.hpp"
 #include "utils.hpp"
@@ -24,7 +24,7 @@
 
 namespace {
 struct update_result_payload {
-	paperback_update_status status{PAPERBACK_UPDATE_STATUS_INTERNAL_ERROR};
+	ffi::UpdateStatus status{ffi::UpdateStatus::InternalError};
 	int http_status{0};
 	std::string latest_version;
 	std::string download_url;
@@ -32,25 +32,14 @@ struct update_result_payload {
 	std::string error_message;
 };
 
-std::string copy_c_string(const char* value) {
-	if (value == nullptr) {
-		return {};
-	}
-	return std::string(value);
-}
-
-update_result_payload convert_result(const paperback_update_result* native_result) {
+update_result_payload convert_result(const ffi::UpdateResult& native_result) {
 	update_result_payload payload;
-	if (native_result == nullptr) {
-		payload.error_message = "Update service returned no result.";
-		return payload;
-	}
-	payload.status = native_result->status;
-	payload.http_status = native_result->http_status;
-	payload.latest_version = copy_c_string(native_result->latest_version);
-	payload.download_url = copy_c_string(native_result->download_url);
-	payload.release_notes = copy_c_string(native_result->release_notes);
-	payload.error_message = copy_c_string(native_result->error_message);
+	payload.status = native_result.status;
+	payload.http_status = native_result.http_status;
+	payload.latest_version = std::string(native_result.latest_version);
+	payload.download_url = std::string(native_result.download_url);
+	payload.release_notes = std::string(native_result.release_notes);
+	payload.error_message = std::string(native_result.error_message);
 	return payload;
 }
 
@@ -62,7 +51,7 @@ bool is_installer_distribution() {
 
 void present_update_result(const update_result_payload& payload, bool silent) {
 	switch (payload.status) {
-	case PAPERBACK_UPDATE_STATUS_AVAILABLE: {
+	case ffi::UpdateStatus::Available: {
 		const wxString latest_version = payload.latest_version.empty() ? APP_VERSION : wxString::FromUTF8(payload.latest_version.c_str());
 		const wxString release_notes = payload.release_notes.empty() ? _("No release notes were provided.") : wxString::FromUTF8(payload.release_notes.c_str());
 		const wxString message = wxString::Format(_("There is an update available.\nYour version: %s\nLatest version: %s\nDescription:\n%s\nDo you want to open the direct download link?"), APP_VERSION, latest_version, release_notes);
@@ -72,7 +61,7 @@ void present_update_result(const update_result_payload& payload, bool silent) {
 		}
 		break;
 	}
-	case PAPERBACK_UPDATE_STATUS_UP_TO_DATE:
+	case ffi::UpdateStatus::UpToDate:
 		if (!silent) {
 			wxMessageBox(_("No updates available."), _("Info"), wxICON_INFORMATION);
 		}
@@ -87,7 +76,7 @@ void present_update_result(const update_result_payload& payload, bool silent) {
 		} else {
 			details = _("Error checking for updates.");
 		}
-		if (payload.status == PAPERBACK_UPDATE_STATUS_HTTP_ERROR && payload.http_status > 0) {
+		if (payload.status == ffi::UpdateStatus::HttpError && payload.http_status > 0) {
 			details = wxString::Format(_("Failed to check for updates. HTTP status: %d"), payload.http_status);
 		}
 		wxMessageBox(details, _("Error"), wxICON_ERROR);
@@ -253,11 +242,13 @@ void app::check_for_updates(bool silent) {
 	const bool installer_build = is_installer_distribution();
 	const std::string current_version = std::string(APP_VERSION.ToUTF8());
 	std::thread([silent, installer_build, current_version]() {
-		const auto flag = static_cast<uint8_t>(installer_build ? 1 : 0);
-		paperback_update_result* native_result = paperback_check_for_updates(current_version.c_str(), flag);
-		update_result_payload payload = convert_result(native_result);
-		if (native_result != nullptr) {
-			paperback_free_update_result(native_result);
+		update_result_payload payload;
+		try {
+			ffi::UpdateResult result = ffi::check_for_updates(current_version, installer_build);
+			payload = convert_result(result);
+		} catch (const rust::Error& e) {
+			payload.status = ffi::UpdateStatus::InternalError;
+			payload.error_message = std::string(e.what());
 		}
 		auto* wx_app = wxTheApp;
 		if (wx_app == nullptr) {

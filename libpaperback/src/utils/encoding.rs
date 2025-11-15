@@ -1,34 +1,30 @@
-use std::{os::raw::c_char, ptr, slice};
-
 use encoding_rs::{UTF_16BE, UTF_16LE, WINDOWS_1252};
-
-use crate::ffi::string_to_c_str;
 
 #[must_use]
 pub fn convert_to_utf8(input: &[u8]) -> String {
 	if input.len() >= 4 {
-		// UTF-32 LE: FF FE 00 00
+		// UTF-32 LE.
 		if input[0] == 0xFF && input[1] == 0xFE && input[2] == 0x00 && input[3] == 0x00 {
 			return decode_utf32_le(&input[4..]);
 		}
-		// UTF-32 BE: 00 00 FE FF
+		// UTF-32 BE.
 		if input[0] == 0x00 && input[1] == 0x00 && input[2] == 0xFE && input[3] == 0xFF {
 			return decode_utf32_be(&input[4..]);
 		}
 	}
 	if input.len() >= 3 {
-		// UTF-8: EF BB BF
+		// UTF-8.
 		if input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF {
 			return String::from_utf8_lossy(&input[3..]).to_string();
 		}
 	}
 	if input.len() >= 2 {
-		// UTF-16 LE: FF FE
+		// UTF-16 LE.
 		if input[0] == 0xFF && input[1] == 0xFE {
 			let (decoded, _, _) = UTF_16LE.decode(&input[2..]);
 			return decoded.to_string();
 		}
-		// UTF-16 BE: FE FF
+		// UTF-16 BE.
 		if input[0] == 0xFE && input[1] == 0xFF {
 			let (decoded, _, _) = UTF_16BE.decode(&input[2..]);
 			return decoded.to_string();
@@ -76,16 +72,6 @@ fn decode_utf32_be(input: &[u8]) -> String {
 		i += 4;
 	}
 	result
-}
-
-#[no_mangle]
-pub extern "C" fn paperback_convert_to_utf8(input: *const u8, input_len: usize) -> *mut c_char {
-	if input.is_null() || input_len == 0 {
-		return ptr::null_mut();
-	}
-	let input_slice = unsafe { slice::from_raw_parts(input, input_len) };
-	let result = convert_to_utf8(input_slice);
-	string_to_c_str(result)
 }
 
 #[cfg(test)]

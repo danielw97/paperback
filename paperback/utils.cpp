@@ -12,7 +12,7 @@
 #include "config_manager.hpp"
 #include "constants.hpp"
 #include "dialogs.hpp"
-#include "libpaperback.h"
+#include "libpaperback/src/bridge.rs.h"
 #include "live_region.hpp"
 #include "main_window.hpp"
 #include "parser.hpp"
@@ -119,35 +119,27 @@ long find_text(const wxString& haystack, const wxString& needle, long start, fin
 }
 
 std::string collapse_whitespace(std::string_view input) {
-	const std::string input_str(input);
-	char* result = paperback_collapse_whitespace(input_str.c_str());
-	if (result == nullptr) {
+	try {
+		return std::string(ffi::collapse_whitespace(std::string(input)));
+	} catch (const rust::Error&) {
 		return {};
 	}
-	std::string output(result);
-	paperback_free_string(result);
-	return output;
 }
 
 std::string trim_string(const std::string& str) {
-	char* result = paperback_trim_string(str.c_str());
-	if (result == nullptr) {
+	try {
+		return std::string(ffi::trim_string(str));
+	} catch (const rust::Error&) {
 		return {};
 	}
-	std::string output(result);
-	paperback_free_string(result);
-	return output;
 }
 
 std::string remove_soft_hyphens(std::string_view input) {
-	const std::string input_str(input);
-	char* result = paperback_remove_soft_hyphens(input_str.c_str());
-	if (result == nullptr) {
+	try {
+		return std::string(ffi::remove_soft_hyphens(std::string(input)));
+	} catch (const rust::Error&) {
 		return {};
 	}
-	std::string output(result);
-	paperback_free_string(result);
-	return output;
 }
 
 const parser* get_parser_for_unknown_file(const wxString& path, config_manager& config) {
@@ -181,29 +173,23 @@ void speak(const wxString& message) {
 }
 
 std::string url_decode(std::string_view encoded) {
-	const std::string encoded_str(encoded);
-	char* result = paperback_url_decode(encoded_str.c_str());
-	if (result == nullptr) {
+	try {
+		return std::string(ffi::url_decode(std::string(encoded)));
+	} catch (const rust::Error&) {
 		return {};
 	}
-	std::string output(result);
-	paperback_free_string(result);
-	return output;
 }
 
 std::string convert_to_utf8(const std::string& input) {
 	if (input.empty()) {
 		return input;
 	}
-	const auto* data = reinterpret_cast<const uint8_t*>(input.data());
-	const size_t len = input.length();
-	char* result = paperback_convert_to_utf8(data, len);
-	if (result == nullptr) {
+	try {
+		rust::Slice<const uint8_t> slice(reinterpret_cast<const uint8_t*>(input.data()), input.length());
+		return std::string(ffi::convert_to_utf8(slice));
+	} catch (const rust::Error&) {
 		return input;
 	}
-	std::string output(result);
-	paperback_free_string(result);
-	return output;
 }
 
 void cleanup_toc(std::vector<std::unique_ptr<toc_item>>& items) {
