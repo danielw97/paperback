@@ -24,7 +24,7 @@
 
 namespace {
 struct update_result_payload {
-	ffi::UpdateStatus status{ffi::UpdateStatus::InternalError};
+	UpdateStatus status{UpdateStatus::InternalError};
 	int http_status{0};
 	std::string latest_version;
 	std::string download_url;
@@ -32,7 +32,7 @@ struct update_result_payload {
 	std::string error_message;
 };
 
-update_result_payload convert_result(const ffi::UpdateResult& native_result) {
+update_result_payload convert_result(const UpdateResult& native_result) {
 	update_result_payload payload;
 	payload.status = native_result.status;
 	payload.http_status = native_result.http_status;
@@ -51,7 +51,7 @@ bool is_installer_distribution() {
 
 void present_update_result(const update_result_payload& payload, bool silent) {
 	switch (payload.status) {
-	case ffi::UpdateStatus::Available: {
+	case UpdateStatus::Available: {
 		const wxString latest_version = payload.latest_version.empty() ? APP_VERSION : wxString::FromUTF8(payload.latest_version.c_str());
 		const wxString release_notes = payload.release_notes.empty() ? _("No release notes were provided.") : wxString::FromUTF8(payload.release_notes.c_str());
 		const wxString message = wxString::Format(_("There is an update available.\nYour version: %s\nLatest version: %s\nDescription:\n%s\nDo you want to open the direct download link?"), APP_VERSION, latest_version, release_notes);
@@ -61,7 +61,7 @@ void present_update_result(const update_result_payload& payload, bool silent) {
 		}
 		break;
 	}
-	case ffi::UpdateStatus::UpToDate:
+	case UpdateStatus::UpToDate:
 		if (!silent) {
 			wxMessageBox(_("No updates available."), _("Info"), wxICON_INFORMATION);
 		}
@@ -76,7 +76,7 @@ void present_update_result(const update_result_payload& payload, bool silent) {
 		} else {
 			details = _("Error checking for updates.");
 		}
-		if (payload.status == ffi::UpdateStatus::HttpError && payload.http_status > 0) {
+		if (payload.status == UpdateStatus::HttpError && payload.http_status > 0) {
 			details = wxString::Format(_("Failed to check for updates. HTTP status: %d"), payload.http_status);
 		}
 		wxMessageBox(details, _("Error"), wxICON_ERROR);
@@ -244,10 +244,10 @@ void app::check_for_updates(bool silent) {
 	std::thread([silent, installer_build, current_version]() {
 		update_result_payload payload;
 		try {
-			ffi::UpdateResult result = ffi::check_for_updates(current_version, installer_build);
+			UpdateResult result = ::check_for_updates(current_version, installer_build);
 			payload = convert_result(result);
-		} catch (const rust::Error& e) {
-			payload.status = ffi::UpdateStatus::InternalError;
+		} catch (const std::exception& e) {
+			payload.status = UpdateStatus::InternalError;
 			payload.error_message = std::string(e.what());
 		}
 		auto* wx_app = wxTheApp;

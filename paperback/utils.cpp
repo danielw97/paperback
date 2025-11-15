@@ -120,24 +120,26 @@ long find_text(const wxString& haystack, const wxString& needle, long start, fin
 
 std::string collapse_whitespace(std::string_view input) {
 	try {
-		return std::string(ffi::collapse_whitespace(std::string(input)));
-	} catch (const rust::Error&) {
+		std::string input_str(input);
+		return std::string(::collapse_whitespace(rust::Str(input_str)));
+	} catch (const std::exception&) {
 		return {};
 	}
 }
 
 std::string trim_string(const std::string& str) {
 	try {
-		return std::string(ffi::trim_string(str));
-	} catch (const rust::Error&) {
+		return std::string(::trim_string(rust::Str(str)));
+	} catch (const std::exception&) {
 		return {};
 	}
 }
 
 std::string remove_soft_hyphens(std::string_view input) {
 	try {
-		return std::string(ffi::remove_soft_hyphens(std::string(input)));
-	} catch (const rust::Error&) {
+		std::string input_str(input);
+		return std::string(::remove_soft_hyphens(rust::Str(input_str)));
+	} catch (const std::exception&) {
 		return {};
 	}
 }
@@ -174,8 +176,9 @@ void speak(const wxString& message) {
 
 std::string url_decode(std::string_view encoded) {
 	try {
-		return std::string(ffi::url_decode(std::string(encoded)));
-	} catch (const rust::Error&) {
+		std::string encoded_str(encoded);
+		return std::string(::url_decode(rust::Str(encoded_str)));
+	} catch (const std::exception&) {
 		return {};
 	}
 }
@@ -186,8 +189,8 @@ std::string convert_to_utf8(const std::string& input) {
 	}
 	try {
 		rust::Slice<const uint8_t> slice(reinterpret_cast<const uint8_t*>(input.data()), input.length());
-		return std::string(ffi::convert_to_utf8(slice));
-	} catch (const rust::Error&) {
+		return std::string(::convert_to_utf8(slice));
+	} catch (const std::exception&) {
 		return input;
 	}
 }
@@ -260,7 +263,7 @@ wxZipEntry* find_zip_entry(const std::string& filename, const std::map<std::stri
 	if (it != entries.end()) {
 		return it->second.get();
 	}
-	auto decoded = url_decode(filename);
+	std::string decoded = url_decode(std::string_view(filename));
 	if (decoded != filename) {
 		it = entries.find(decoded);
 		if (it != entries.end()) {
