@@ -3,6 +3,7 @@
 mod bridge;
 mod document;
 mod html_to_text;
+mod xml_to_text;
 mod parser;
 mod update;
 mod utils;

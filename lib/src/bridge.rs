@@ -47,6 +47,29 @@ pub mod ffi {
 		pub char_count: usize,
 	}
 
+	pub struct FfiIdPosition {
+		pub id: String,
+		pub offset: usize,
+	}
+
+	pub struct FfiManifestItem {
+		pub id: String,
+		pub path: String,
+	}
+
+	pub struct FfiHeadingInfo {
+		pub offset: usize,
+		pub level: i32,
+		pub text: String,
+	}
+
+	pub struct FfiXmlConversion {
+		pub text: String,
+		pub headings: Vec<FfiHeadingInfo>,
+		pub section_offsets: Vec<usize>,
+		pub id_positions: Vec<FfiIdPosition>,
+	}
+
 	pub struct FfiDocument {
 		pub title: String,
 		pub author: String,
@@ -54,6 +77,9 @@ pub mod ffi {
 		pub markers: Vec<FfiMarker>,
 		pub toc_items: Vec<FfiTocItem>,
 		pub stats: FfiDocumentStats,
+		pub id_positions: Vec<FfiIdPosition>,
+		pub spine_items: Vec<String>,
+		pub manifest_items: Vec<FfiManifestItem>,
 	}
 
 	extern "Rust" {
@@ -68,6 +94,7 @@ pub mod ffi {
 		fn get_available_parsers() -> Result<Vec<ParserInfo>>;
 		fn parse_document(file_path: &str, password: &str) -> Result<FfiDocument>;
 		fn get_parser_for_extension(extension: &str) -> Result<String>;
+		fn convert_xml_to_text(content: &str) -> Result<FfiXmlConversion>;
 	}
 }
 
@@ -76,8 +103,10 @@ use std::fs::File;
 use self::ffi::UpdateStatus;
 use crate::{
 	document::{ParserContext, TocItem},
-	parser, update as update_module,
+	parser,
+	update as update_module,
 	utils::{encoding, text, zip as zip_module},
+	xml_to_text::XmlToText,
 };
 
 fn check_for_updates(current_version: &str, is_installer: bool) -> Result<ffi::UpdateResult, String> {
@@ -191,6 +220,17 @@ fn parse_document(file_path: &str, password: &str) -> Result<ffi::FfiDocument, S
 			line_count: doc.stats.line_count,
 			char_count: doc.stats.char_count,
 		},
+		id_positions: doc
+			.id_positions
+			.iter()
+			.map(|(id, offset)| ffi::FfiIdPosition { id: id.clone(), offset: *offset })
+			.collect(),
+		spine_items: doc.spine_items.clone(),
+		manifest_items: doc
+			.manifest_items
+			.iter()
+			.map(|(id, path)| ffi::FfiManifestItem { id: id.clone(), path: path.clone() })
+			.collect(),
 	})
 }
 
@@ -213,4 +253,27 @@ fn flatten_toc_items(items: &[TocItem]) -> Vec<ffi::FfiTocItem> {
 	}
 	flatten_recursive(items, &mut result);
 	result
+}
+
+fn convert_xml_to_text(content: &str) -> Result<ffi::FfiXmlConversion, String> {
+	let mut converter = XmlToText::new();
+	if !converter.convert(content) {
+		return Err("Failed to parse XML content".into());
+	}
+	let headings = converter
+		.get_headings()
+		.iter()
+		.map(|heading| ffi::FfiHeadingInfo { offset: heading.offset, level: heading.level, text: heading.text.clone() })
+		.collect();
+	let id_positions = converter
+		.get_id_positions()
+		.iter()
+		.map(|(id, offset)| ffi::FfiIdPosition { id: id.clone(), offset: *offset })
+		.collect();
+	Ok(ffi::FfiXmlConversion {
+		text: converter.get_text(),
+		headings,
+		section_offsets: converter.get_section_offsets().to_vec(),
+		id_positions,
+	})
 }

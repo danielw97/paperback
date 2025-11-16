@@ -29,6 +29,11 @@ private:
 	parser_flags flags_;
 };
 
+class rust_epub_parser final : public rust_parser {
+public:
+	rust_epub_parser();
+};
+
 class rust_html_parser final : public rust_parser {
 public:
 	rust_html_parser();
@@ -44,6 +49,7 @@ public:
 	rust_text_parser();
 };
 
+REGISTER_PARSER(rust_epub_parser)
 REGISTER_PARSER(rust_html_parser)
 REGISTER_PARSER(rust_markdown_parser)
 REGISTER_PARSER(rust_text_parser)

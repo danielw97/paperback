@@ -9,7 +9,7 @@
 
 #include "fb2_parser.hpp"
 #include "utils.hpp"
-#include "xml_to_text.hpp"
+#include "libpaperback/src/bridge.rs.h"
 #include <pugixml.hpp>
 #include <sstream>
 #include <wx/filename.h>
@@ -17,7 +17,11 @@
 #include <wx/translation.h>
 #include <wx/wfstream.h>
 
-inline const char* FB2_NS = "http://www.gribuser.ru/xml/fictionbook/2.0";
+namespace {
+wxString to_wxstring(const rust::String& rust_str) {
+	return wxString::FromUTF8(std::string(rust_str).c_str());
+}
+} // namespace
 
 std::unique_ptr<document> fb2_parser::load(const parser_context& ctx) const {
 	wxFileInputStream input(ctx.file_path);
@@ -47,12 +51,14 @@ std::unique_ptr<document> fb2_parser::load(const parser_context& ctx) const {
 			xml_content = oss.str();
 		}
 	} catch (...) {}
-	xml_to_text converter;
-	if (!converter.convert(xml_content)) {
-		throw parser_exception(_("Failed to convert FB2 XML to text"), ctx.file_path);
+	FfiXmlConversion conversion;
+	try {
+		conversion = convert_xml_to_text(rust::Str(xml_content));
+	} catch (const std::exception& e) {
+		throw parser_exception(wxString::FromUTF8(e.what()), ctx.file_path);
 	}
 	auto doc = std::make_unique<document>();
-	doc->buffer.set_content(wxString::FromUTF8(converter.get_text()));
+	doc->buffer.set_content(to_wxstring(conversion.text));
 	try {
 		pugi::xml_document d;
 		if (d.load_buffer(xml_content.data(), xml_content.size())) {
@@ -79,26 +85,14 @@ std::unique_ptr<document> fb2_parser::load(const parser_context& ctx) const {
 	} catch (...) {
 		// Ignore XML parsing errors, we still have the text
 	}
-	for (const auto& heading : converter.get_headings()) {
-		doc->buffer.add_heading(heading.level, wxString::FromUTF8(heading.text));
+	for (const auto& heading : conversion.headings) {
+		doc->buffer.add_heading(heading.level, to_wxstring(heading.text));
 	}
-	for (const auto& offset : converter.get_section_offsets()) {
+	for (const auto& offset : conversion.section_offsets) {
 		doc->buffer.add_marker(offset, marker_type::section_break);
 	}
+	for (const auto& id_pos : conversion.id_positions) {
+		doc->id_positions[std::string(id_pos.id)] = id_pos.offset;
+	}
 	return doc;
-}
-
-std::string fb2_parser::get_element_text(pugi::xml_node element) {
-	if (element == nullptr) {
-		return {};
-	}
-	std::string text;
-	for (auto child : element.children()) {
-		if (child.type() == pugi::node_pcdata || child.type() == pugi::node_cdata) {
-			text += child.value();
-		} else if (child.type() == pugi::node_element) {
-			text += get_element_text(child);
-		}
-	}
-	return text;
 }

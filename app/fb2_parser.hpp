@@ -34,9 +34,6 @@ public:
 	}
 
 	[[nodiscard]] std::unique_ptr<document> load(const parser_context& ctx) const override;
-
-private:
-	static std::string get_element_text(pugi::xml_node element);
 };
 
 REGISTER_PARSER(fb2_parser);

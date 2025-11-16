@@ -45,6 +45,27 @@ void populate_stats(document_stats& stats, const FfiDocumentStats& ffi_stats) {
 	stats.line_count = ffi_stats.line_count;
 	stats.char_count = ffi_stats.char_count;
 }
+
+void populate_id_positions(document& doc, const rust::Vec<FfiIdPosition>& ffi_positions) {
+	doc.id_positions.clear();
+	for (const auto& entry : ffi_positions) {
+		doc.id_positions[std::string(entry.id)] = entry.offset;
+	}
+}
+
+void populate_spine_items(document& doc, const rust::Vec<rust::String>& ffi_spine_items) {
+	doc.spine_items.clear();
+	for (const auto& item : ffi_spine_items) {
+		doc.spine_items.emplace_back(std::string(item));
+	}
+}
+
+void populate_manifest_items(document& doc, const rust::Vec<FfiManifestItem>& ffi_manifest) {
+	doc.manifest_items.clear();
+	for (const auto& entry : ffi_manifest) {
+		doc.manifest_items[std::string(entry.id)] = std::string(entry.path);
+	}
+}
 } // anonymous namespace
 
 rust_parser::rust_parser(wxString parser_name, std::vector<wxString> exts, parser_flags flags) : parser_name_{std::move(parser_name)}, extensions_{std::move(exts)}, flags_{flags} {
@@ -74,10 +95,16 @@ std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 		populate_markers(doc->buffer, ffi_doc.markers);
 		populate_toc_items(doc->toc_items, ffi_doc.toc_items);
 		populate_stats(doc->stats, ffi_doc.stats);
+		populate_id_positions(*doc, ffi_doc.id_positions);
+		populate_spine_items(*doc, ffi_doc.spine_items);
+		populate_manifest_items(*doc, ffi_doc.manifest_items);
 		return doc;
 	} catch (const std::exception& e) {
 		throw parser_exception(wxString::FromUTF8(e.what()), ctx.file_path);
 	}
+}
+
+rust_epub_parser::rust_epub_parser() : rust_parser("Epub Books", {"epub"}, parser_flags::supports_sections | parser_flags::supports_toc | parser_flags::supports_lists) {
 }
 
 rust_html_parser::rust_html_parser() : rust_parser("HTML Documents", {"htm", "html", "xhtml"}, parser_flags::supports_toc | parser_flags::supports_lists) {

@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::OnceLock};
 
 use crate::document::{Document, ParserContext, ParserFlags};
 
+pub mod epub;
 pub mod html;
 pub mod markdown;
 pub mod text;
@@ -59,6 +60,7 @@ impl ParserRegistry {
 		static REGISTRY: OnceLock<ParserRegistry> = OnceLock::new();
 		REGISTRY.get_or_init(|| {
 			let mut registry = ParserRegistry::new();
+			registry.register(epub::EpubParser);
 			registry.register(text::TextParser);
 			registry.register(markdown::MarkdownParser);
 			registry.register(html::HtmlParser);
