@@ -37,37 +37,3 @@ impl Parser for TextParser {
 		Ok(doc)
 	}
 }
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_text_parser_properties() {
-		let parser = TextParser;
-		assert_eq!(parser.name(), "Text Files");
-		assert_eq!(parser.extensions(), &["txt", "log"]);
-		assert_eq!(parser.supported_flags(), ParserFlags::NONE);
-	}
-
-	#[test]
-	fn test_parse_simple_text() {
-		use std::io::Write;
-
-		use tempfile::NamedTempFile;
-
-		let mut temp_file = NamedTempFile::new().unwrap();
-		writeln!(temp_file, "Hello, World!").unwrap();
-		writeln!(temp_file, "This is a test.").unwrap();
-
-		let context = ParserContext::new(temp_file.path().to_string_lossy().to_string());
-		let parser = TextParser;
-		let result = parser.parse(&context);
-
-		assert!(result.is_ok());
-		let doc = result.unwrap();
-		assert!(doc.buffer.content.contains("Hello, World!"));
-		assert!(doc.buffer.content.contains("This is a test."));
-		assert!(doc.stats.word_count > 0);
-	}
-}

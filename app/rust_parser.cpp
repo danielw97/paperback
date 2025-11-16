@@ -31,12 +31,36 @@ void populate_markers(document_buffer& buffer, const rust::Vec<FfiMarker>& ffi_m
 }
 
 void populate_toc_items(std::vector<std::unique_ptr<toc_item>>& toc_items, const rust::Vec<FfiTocItem>& ffi_toc_items) {
+	if (ffi_toc_items.empty()) {
+		return;
+	}
+	constexpr int MAX_DEPTH = 32;
+	std::vector<std::vector<std::unique_ptr<toc_item>>*> depth_stacks(MAX_DEPTH + 1, nullptr);
+	depth_stacks[0] = &toc_items;
 	for (const auto& rust_toc : ffi_toc_items) {
 		auto item = std::make_unique<toc_item>();
 		item->name = to_wxstring(rust_toc.name);
 		item->ref = to_wxstring(rust_toc.reference);
 		item->offset = rust_toc.offset;
-		toc_items.push_back(std::move(item));
+		const int depth = rust_toc.depth;
+		if (depth < 0 || depth > MAX_DEPTH) {
+			continue;
+		}
+		std::vector<std::unique_ptr<toc_item>>* parent_list = nullptr;
+		for (int i = depth; i >= 0; --i) {
+			if (depth_stacks[i] != nullptr) {
+				parent_list = depth_stacks[i];
+				break;
+			}
+		}
+		if (parent_list == nullptr) {
+			parent_list = &toc_items;
+		}
+		parent_list->push_back(std::move(item));
+		depth_stacks[depth + 1] = &parent_list->back()->children;
+		for (int i = depth + 2; i <= MAX_DEPTH; ++i) {
+			depth_stacks[i] = nullptr;
+		}
 	}
 }
 

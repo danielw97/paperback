@@ -39,6 +39,7 @@ pub mod ffi {
 		pub name: String,
 		pub reference: String,
 		pub offset: usize,
+		pub depth: i32,
 	}
 
 	pub struct FfiDocumentStats {
@@ -240,17 +241,18 @@ fn get_parser_for_extension(extension: &str) -> Result<String, String> {
 
 fn flatten_toc_items(items: &[TocItem]) -> Vec<ffi::FfiTocItem> {
 	let mut result = Vec::new();
-	fn flatten_recursive(items: &[TocItem], result: &mut Vec<ffi::FfiTocItem>) {
+	fn flatten_recursive(items: &[TocItem], depth: i32, result: &mut Vec<ffi::FfiTocItem>) {
 		for item in items {
 			result.push(ffi::FfiTocItem {
 				name: item.name.clone(),
 				reference: item.reference.clone(),
 				offset: item.offset,
+				depth,
 			});
-			flatten_recursive(&item.children, result);
+			flatten_recursive(&item.children, depth + 1, result);
 		}
 	}
-	flatten_recursive(items, &mut result);
+	flatten_recursive(items, 0, &mut result);
 	result
 }
 
