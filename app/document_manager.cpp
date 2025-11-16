@@ -101,7 +101,7 @@ bool document_manager::create_document_tab(const wxString& path, const parser* p
 		std::optional<std::string> initial_password;
 		if (!saved_password.IsEmpty()) {
 			password_in_use = saved_password;
-			initial_password = saved_password.ToStdString();
+			initial_password = saved_password.ToUTF8().data();
 		}
 		doc = load_document(initial_password);
 	} catch (const parser_exception& e) {
@@ -114,7 +114,7 @@ bool document_manager::create_document_tab(const wxString& path, const parser* p
 			const wxString entered_password = dlg.get_password();
 			password_in_use = entered_password;
 			try {
-				doc = load_document(std::optional<std::string>{entered_password.ToStdString()});
+				doc = load_document(std::optional<std::string>{entered_password.ToUTF8().data()});
 			} catch (const parser_exception& retry_e) {
 				show_parser_error(retry_e);
 				return false;

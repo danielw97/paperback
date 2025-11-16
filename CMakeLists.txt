@@ -109,11 +109,9 @@ if(WIN32)
 	get_filename_component(MSVC_BIN_DIR ${CMAKE_LINKER} DIRECTORY)
 	add_custom_command(
 		OUTPUT ${RUST_LIB_OUTPUT}
-		COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_BIN_DIR};$ENV{PATH}"
-			${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
+		COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_BIN_DIR};$ENV{PATH}" ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
 		DEPENDS ${LIBPAPERBACK_SOURCES}
-		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 else()
 	add_custom_command(
@@ -121,7 +119,6 @@ else()
 		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
 		DEPENDS ${LIBPAPERBACK_SOURCES}
-		COMMENT "Building libpaperback Rust crate with cxx bridge"
 	)
 endif()
 add_custom_target(libpaperback_rust DEPENDS ${RUST_LIB_OUTPUT})

@@ -85,7 +85,7 @@ parser_flags rust_parser::supported_flags() const {
 
 std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 	try {
-		const std::string file_path = ctx.file_path.ToStdString();
+		const std::string file_path = ctx.file_path.ToUTF8().data();
 		const std::string password = ctx.password.value_or("");
 		const auto ffi_doc = parse_document(rust::Str(file_path), rust::Str(password));
 		auto doc = std::make_unique<document>();

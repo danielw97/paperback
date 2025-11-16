@@ -37,7 +37,7 @@ static std::string get_local_name(const char* qname) {
 }
 
 std::unique_ptr<document> docx_parser::load(const parser_context& ctx) const {
-	const std::string file_path = ctx.file_path.ToStdString();
+	const std::string file_path = ctx.file_path.ToUTF8().data();
 	const std::string rels_content = read_zip_entry(file_path, "word/_rels/document.xml.rels");
 	const std::string doc_content = read_zip_entry(file_path, "word/document.xml");
 	if (doc_content.empty()) {

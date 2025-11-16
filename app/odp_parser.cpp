@@ -35,7 +35,7 @@ static std::string get_local_name(const char* qname) {
 }
 
 std::unique_ptr<document> odp_parser::load(const parser_context& ctx) const {
-	const std::string file_path = ctx.file_path.ToStdString();
+	const std::string file_path = ctx.file_path.ToUTF8().data();
 	const std::string content = read_zip_entry(file_path, "content.xml");
 	if (content.empty()) {
 		throw parser_exception(_("ODP file does not contain content.xml or it is empty"), ctx.file_path);

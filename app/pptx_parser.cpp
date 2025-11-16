@@ -42,7 +42,7 @@ static std::string get_local_name(const char* qname) {
 
 std::unique_ptr<document> pptx_parser::load(const parser_context& ctx) const {
 	try {
-		const std::string file_path = ctx.file_path.ToStdString();
+		const std::string file_path = ctx.file_path.ToUTF8().data();
 		std::map<std::string, std::string> slide_contents;
 		std::map<std::string, std::string> slide_rels;
 
