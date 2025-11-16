@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bitflags::bitflags;
+use crate::utils::text::display_len;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MarkerType {
@@ -89,15 +90,17 @@ impl Marker {
 pub struct DocumentBuffer {
 	pub content: String,
 	pub markers: Vec<Marker>,
+	content_display_len: usize,
 }
 
 impl DocumentBuffer {
 	pub fn new() -> Self {
-		Self { content: String::new(), markers: Vec::new() }
+		Self { content: String::new(), markers: Vec::new(), content_display_len: 0 }
 	}
 
 	pub fn with_content(content: String) -> Self {
-		Self { content, markers: Vec::new() }
+		let len = display_len(&content);
+		Self { content, markers: Vec::new(), content_display_len: len }
 	}
 
 	pub fn add_marker(&mut self, marker: Marker) {
@@ -106,10 +109,11 @@ impl DocumentBuffer {
 
 	pub fn append(&mut self, text: &str) {
 		self.content.push_str(text);
+		self.content_display_len += display_len(text);
 	}
 
 	pub fn current_position(&self) -> usize {
-		self.content.len()
+		self.content_display_len
 	}
 }
 

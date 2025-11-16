@@ -32,6 +32,18 @@ pub fn trim_string(s: &str) -> String {
 	s.trim_matches(|c: char| c.is_whitespace() || c == '\u{00A0}').to_string()
 }
 
+#[must_use]
+pub fn display_len(s: &str) -> usize {
+	#[cfg(windows)]
+	{
+		s.encode_utf16().count()
+	}
+	#[cfg(not(windows))]
+	{
+		s.chars().count()
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -68,5 +80,21 @@ mod tests {
 		assert_eq!(trim_string("\n\nhello\n\n"), "hello");
 		assert_eq!(trim_string("\u{00A0}hello\u{00A0}"), "hello");
 		assert_eq!(trim_string("hello"), "hello");
+	}
+
+	#[cfg(windows)]
+	#[test]
+	fn test_display_len_windows() {
+		assert_eq!(display_len("abc"), 3);
+		assert_eq!(display_len("💖"), 2);
+		assert_eq!(display_len("line\nwrap"), 9);
+	}
+
+	#[cfg(not(windows))]
+	#[test]
+	fn test_display_len_non_windows() {
+		assert_eq!(display_len("abc"), 3);
+		assert_eq!(display_len("💖"), 1);
+		assert_eq!(display_len("line\nwrap"), 9);
 	}
 }

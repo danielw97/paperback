@@ -103,8 +103,7 @@ use std::fs::File;
 use self::ffi::UpdateStatus;
 use crate::{
 	document::{ParserContext, TocItem},
-	parser,
-	update as update_module,
+	parser, update as update_module,
 	utils::{encoding, text, zip as zip_module},
 	xml_to_text::XmlToText,
 };

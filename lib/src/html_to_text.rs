@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ego_tree::NodeRef;
 use scraper::{Html, Node};
 
-use crate::utils::text::{collapse_whitespace, remove_soft_hyphens, trim_string};
+use crate::utils::text::{collapse_whitespace, display_len, remove_soft_hyphens, trim_string};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HtmlSourceMode {
@@ -411,14 +411,14 @@ impl HtmlToText {
 	fn add_line(&mut self, line: &str) {
 		if self.preserve_whitespace {
 			let processed_line = line.to_string();
-			self.cached_char_length += processed_line.chars().count() + 1; // +1 for newline
+			self.cached_char_length += display_len(&processed_line) + 1; // +1 for newline
 			self.lines.push(processed_line);
 			self.preserve_line_whitespace.push(true);
 		} else {
 			let mut processed_line = collapse_whitespace(line);
 			processed_line = trim_string(&processed_line);
 			if !processed_line.is_empty() {
-				self.cached_char_length += processed_line.chars().count() + 1; // +1 for newline
+				self.cached_char_length += display_len(&processed_line) + 1; // +1 for newline
 				self.lines.push(processed_line);
 				self.preserve_line_whitespace.push(false);
 			}
@@ -437,14 +437,14 @@ impl HtmlToText {
 		for (i, line) in self.lines.iter().enumerate() {
 			let preserve_ws = self.preserve_line_whitespace.get(i).copied().unwrap_or(false);
 			if preserve_ws {
-				self.cached_char_length += line.chars().count() + 1; // +1 for newline
+				self.cached_char_length += display_len(line) + 1; // +1 for newline
 				cleaned_lines.push(line.clone());
 				cleaned_preserve.push(true);
 			} else {
 				let mut cleaned = collapse_whitespace(line);
 				cleaned = trim_string(&cleaned);
 				if !cleaned.is_empty() {
-					self.cached_char_length += cleaned.chars().count() + 1; // +1 for newline
+					self.cached_char_length += display_len(&cleaned) + 1; // +1 for newline
 					cleaned_lines.push(cleaned);
 					cleaned_preserve.push(false);
 				}
@@ -455,7 +455,7 @@ impl HtmlToText {
 	}
 
 	fn get_current_text_position(&self) -> usize {
-		self.cached_char_length + self.current_line.chars().count()
+		self.cached_char_length + display_len(&self.current_line)
 	}
 
 	fn is_block_element(tag_name: &str) -> bool {

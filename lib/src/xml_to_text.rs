@@ -4,7 +4,7 @@ use roxmltree::{Document, Node, NodeType};
 
 use crate::{
 	html_to_text::{HeadingInfo, LinkInfo, ListInfo, ListItemInfo},
-	utils::text::{collapse_whitespace, remove_soft_hyphens, trim_string},
+	utils::text::{collapse_whitespace, display_len, remove_soft_hyphens, trim_string},
 };
 
 #[derive(Clone, Copy, Default)]
@@ -176,7 +176,8 @@ impl XmlToText {
 					self.list_style_stack.push(style);
 					let mut item_count = 0;
 					for child in node.children() {
-						if child.node_type() == NodeType::Element && child.tag_name().name().eq_ignore_ascii_case("li") {
+						if child.node_type() == NodeType::Element && child.tag_name().name().eq_ignore_ascii_case("li")
+						{
 							item_count += 1;
 						}
 					}
@@ -190,7 +191,11 @@ impl XmlToText {
 						self.id_positions.insert(id.to_string(), self.get_current_text_position());
 					}
 				}
-				if self.in_body && tag_name.len() == 2 && tag_name.starts_with('h') && tag_name.as_bytes()[1].is_ascii_digit() {
+				if self.in_body
+					&& tag_name.len() == 2
+					&& tag_name.starts_with('h')
+					&& tag_name.as_bytes()[1].is_ascii_digit()
+				{
 					let level = tag_name.as_bytes()[1] - b'0';
 					if (1..=6).contains(&level) {
 						self.finalize_current_line();
@@ -257,12 +262,12 @@ impl XmlToText {
 			while processed_line.ends_with(['\n', '\r']) {
 				processed_line.pop();
 			}
-			self.cached_char_length += processed_line.chars().count() + 1;
+			self.cached_char_length += display_len(&processed_line) + 1;
 			self.lines.push(processed_line);
 		} else {
 			let trimmed = trim_string(&collapse_whitespace(line));
 			if !trimmed.is_empty() {
-				self.cached_char_length += trimmed.chars().count() + 1;
+				self.cached_char_length += display_len(&trimmed) + 1;
 				self.lines.push(trimmed);
 			}
 		}
@@ -275,7 +280,7 @@ impl XmlToText {
 
 	fn get_current_text_position(&self) -> usize {
 		let trimmed = self.current_line.trim_end_matches(' ');
-		self.cached_char_length + trimmed.chars().count()
+		self.cached_char_length + display_len(trimmed)
 	}
 
 	fn get_element_text(&self, node: Node<'_, '_>) -> Option<String> {
@@ -303,10 +308,23 @@ impl XmlToText {
 	fn is_block_element(tag_name: &str) -> bool {
 		matches!(
 			tag_name,
-			"div" | "p" | "pre" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "blockquote" | "ul"
-				| "ol" | "li" | "section" | "article" | "header" | "footer" | "nav" | "aside"
-				| "main" | "figure" | "figcaption" | "address" | "hr" | "table" | "thead" | "tbody"
-				| "tfoot" | "tr" | "td" | "th"
+			"div"
+				| "p" | "pre"
+				| "h1" | "h2"
+				| "h3" | "h4"
+				| "h5" | "h6"
+				| "blockquote"
+				| "ul" | "ol"
+				| "li" | "section"
+				| "article" | "header"
+				| "footer" | "nav"
+				| "aside" | "main"
+				| "figure" | "figcaption"
+				| "address" | "hr"
+				| "table" | "thead"
+				| "tbody" | "tfoot"
+				| "tr" | "td"
+				| "th"
 		)
 	}
 

@@ -44,15 +44,13 @@ impl Parser for EpubParser {
 	}
 
 	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
-		let mut epub = EpubDoc::new(&context.file_path).map_err(|e| format!("Failed to open EPUB '{}': {e}", context.file_path))?;
+		let mut epub = EpubDoc::new(&context.file_path)
+			.map_err(|e| format!("Failed to open EPUB '{}': {e}", context.file_path))?;
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		let mut sections = Vec::new();
-		let manifest_items: HashMap<String, String> = epub
-			.resources
-			.iter()
-			.map(|(id, item)| (id.clone(), normalize_path(&item.path)))
-			.collect();
+		let manifest_items: HashMap<String, String> =
+			epub.resources.iter().map(|(id, item)| (id.clone(), normalize_path(&item.path))).collect();
 		let mut conversion_errors = Vec::new();
 		let spine_items: Vec<_> = epub.spine.iter().map(|item| item.idref.clone()).collect();
 		for (index, idref) in spine_items.iter().enumerate() {
@@ -84,7 +82,9 @@ impl Parser for EpubParser {
 					for heading in section.headings {
 						let marker_type = heading_marker_type(heading.level);
 						buffer.add_marker(
-							Marker::new(marker_type, section_start + heading.offset).with_text(heading.text.clone()).with_level(heading.level),
+							Marker::new(marker_type, section_start + heading.offset)
+								.with_text(heading.text.clone())
+								.with_level(heading.level),
 						);
 					}
 					for link in section.links {
@@ -96,7 +96,9 @@ impl Parser for EpubParser {
 						);
 					}
 					for list in section.lists {
-						buffer.add_marker(Marker::new(MarkerType::List, section_start + list.offset).with_level(list.item_count));
+						buffer.add_marker(
+							Marker::new(MarkerType::List, section_start + list.offset).with_level(list.item_count),
+						);
 					}
 					for list_item in section.list_items {
 						buffer.add_marker(
@@ -125,15 +127,10 @@ impl Parser for EpubParser {
 			};
 			return Err(format!("EPUB has no readable content ({reason})"));
 		}
-		let title = epub
-			.get_title()
-			.filter(|t| !t.trim().is_empty())
-			.unwrap_or_else(|| fallback_title(&context.file_path));
-		let author = epub
-			.mdata("creator")
-			.map(|item| trim_string(&item.value))
-			.filter(|s| !s.is_empty())
-			.unwrap_or_default();
+		let title =
+			epub.get_title().filter(|t| !t.trim().is_empty()).unwrap_or_else(|| fallback_title(&context.file_path));
+		let author =
+			epub.mdata("creator").map(|item| trim_string(&item.value)).filter(|s| !s.is_empty()).unwrap_or_default();
 		let toc_items = build_toc(&epub.toc, &sections, &id_positions);
 		let mut document = Document::new().with_title(title).with_author(author);
 		document.set_buffer(buffer);
@@ -147,11 +144,7 @@ impl Parser for EpubParser {
 }
 
 fn fallback_title(path: &str) -> String {
-	Path::new(path)
-		.file_stem()
-		.and_then(|stem| stem.to_str())
-		.unwrap_or("Untitled")
-		.to_string()
+	Path::new(path).file_stem().and_then(|stem| stem.to_str()).unwrap_or("Untitled").to_string()
 }
 
 fn convert_section(content: &str) -> Result<SectionContent, String> {
@@ -213,11 +206,7 @@ fn resolve_href(current_path: &str, target: &str) -> String {
 		normalize_path(&joined)
 	};
 	if let Some(frag) = fragment {
-		if frag.is_empty() {
-			resolved
-		} else {
-			format!("{resolved}#{frag}")
-		}
+		if frag.is_empty() { resolved } else { format!("{resolved}#{frag}") }
 	} else {
 		resolved
 	}
