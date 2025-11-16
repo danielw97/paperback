@@ -1,4 +1,4 @@
-# Paperback - version 0.6
+# Paperback - version 0.6.1
 ## Introduction
 Paperback is a lightweight, fast, and accessible ebook/document reader designed to make reading fun and seamless, regardless of the file format being used or the user's preferences.
 
@@ -46,6 +46,8 @@ Paperback's user interface was designed specifically with keyboard and screen re
 * Ctrl+G: bring up the go to line dialog.
 * Ctrl+Shift+G: bring up the go to percent dialog.
 * Ctrl+P: Bring up the go to page dialog, if supported in your focused document.
+* Alt+left: go to the previous item in the navigation history.
+* Alt+right: go to the next item in the navigation history.
 * Left bracket: go to the previous section.
 * Right bracket: go to the next section.
 * Shift+H: go to the previous heading.
@@ -83,6 +85,7 @@ Paperback's user interface was designed specifically with keyboard and screen re
 * Ctrl+W: view the word count of the currently focused document.
 * Ctrl+I: bring up the document info dialog.
 * Ctrl+T: show the table of contents.
+* F7: bring up the elements list.
 * Ctrl+Shift+E: export your currently focused document's bookmarks and reading position to a file for easy sharing.
 * Ctrl+Shift+I: import metadata about a book from a .paperback file.
 * Ctrl+E: export your focused document's contents to a text file.
@@ -128,7 +131,20 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * Steffen Schultz: German translation
 
 ## Changelog
-### Version 0.6
+### Version 0.6.1
+* Added password-protected PDF support! [#169](https://github.com/trypsynth/paperback/issues/169).
+* Added a very basic go to previous/next position feature. If you press enter on an internal link and it moves your cursor, that position will now be remembered, and can be navigated to with alt+left/right arrows. [#115](https://github.com/trypsynth/paperback/issues/115), [#174](https://github.com/trypsynth/paperback/pull/174).
+* Added an elements list! Currently it only shows a tree of all the headings in your document or a list of links, but there are plans to expand it in the future. [#173](https://github.com/trypsynth/paperback/issues/173), [#177](https://github.com/trypsynth/paperback/pull/177).
+* Added an option to start Paperback in maximized mode by default. [#164](https://github.com/trypsynth/paperback/issues/164), [#172](https://github.com/trypsynth/paperback/pull/172).
+* Fixed links in some Epub documents not working properly. [#167](https://github.com/trypsynth/paperback/issues/167), [#171](https://github.com/trypsynth/paperback/pull/171), [#178](https://github.com/trypsynth/paperback/issues/178), [#180](https://github.com/trypsynth/paperback/pull/180).
+* Fixed parsing Epub TOCs containing relative paths. [#187](https://github.com/trypsynth/paperback/issues/187).
+* Fixed some epub documents not showing a title or author. [#175](https://github.com/trypsynth/paperback/issues/175).
+* Fixed the titles of some epub chapters not showing up properly in the TOC dialog. [#176](https://github.com/trypsynth/paperback/pull/176).
+* Fixed you not being able to use the space bar to activate the OK/cancel buttons in the TOC dialog. [#170](https://github.com/trypsynth/paperback/issues/170).
+* Improved the handling of headings in Word documents. [#183](https://github.com/trypsynth/paperback/pull/183).
+* You will now get spoken feedback if the recent documents list is empty when you try to bring up the dialog. [#185](https://github.com/trypsynth/paperback/issues/185).
+
+### Version 0.6.0
 * A new option to show the go menu in a far more compact form has been added to the options dialog, checked by default. 
 * Added an option to make navigation by structural elements wrap. [#116](https://github.com/trypsynth/paperback/pull/116).
 * Added an option to the tools menu to open the containing folder of the currently focused document. [#142](https://github.com/trypsynth/paperback/pull/142).
@@ -166,7 +182,7 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * The recent documents list has been dramatically expanded! Instead of simply showing you the last 10 documents you opened, it'll now show you a customizable number, with the rest of the documents you've ever opened being accessible through a small dialog. [#78](https://github.com/trypsynth/paperback/issues/78), [#80](https://github.com/trypsynth/paperback/pull/80), [#84](https://github.com/trypsynth/paperback/pull/84), [#135](https://github.com/trypsynth/paperback/pull/135).
 * Various small improvements to the parsers across the board, including putting a blank line between slides in PPTX presentations, fixing the newline handling inside of paragraphs in word documents, and adding bullet points to list items.
 
-### Version 0.5
+### Version 0.5.0
 * Added Microsoft Word document support! [#27](https://github.com/trypsynth/paperback/issues/27).
 * Added support for PowerPoint presentations! [#25](https://github.com/trypsynth/paperback/issues/25).
 * Fixed certain menu items not being disabled with no documents open.
@@ -185,14 +201,14 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * The unicode non-breaking space is now considered when stripping blank lines. [#71](https://github.com/trypsynth/paperback/issues/71).
 * You will no longer be asked how you want to open an unrecognized file every single time you load it, only the first time.
 
-### Version 0.41
+### Version 0.4.1
 * Added an optional start menu icon to the installer.
 * The table of contents should now be cleaner in a few cases, for example if you have a child and parent item with the same text at the same position you'll now only see the parent item.
 * Fixed the table of contents in certain CHM documents.
 * Fixed the table of contents in Epub 3 books with absolute paths in them. [#67](https://github.com/trypsynth/paperback/issues/67).
 * CHM documents should now show their title as set in the metadata file.
 
-### Version 0.4
+### Version 0.4.0
 * Added CHM file support! [#23](https://github.com/trypsynth/paperback/issues/23).
 * Added bookmark support! You can have as many bookmarks throughout as many documents as you like. You can jump forward and backward through them with b and shift+b, set one with control+shift+b, and bring up a dialog to jump to a specific bookmark with control+b. [#13](https://github.com/trypsynth/paperback/issues/13).
 * Added an installer alongside the portable zip file! The installer will install Paperback into your Program Files directory, and automatically set up file associations for you. [#33](https://github.com/trypsynth/paperback/issues/33).
@@ -207,12 +223,12 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * Input into the go to line and go to page dialogs should now be sanitized more strictly.
 * Fixed table of contents navigation in epub 3 books with relative paths in their manifests.
 
-### Version 0.3
+### Version 0.3.0
 * Fixed the table of contents in epub books with URL-encoded manifests. [#34](https://github.com/trypsynth/paperback/issues/34).
 * Fixed heading navigation in HTML documents containing multi-byte Unicode characters. [#42](https://github.com/trypsynth/paperback/issues/42), [#59](https://github.com/trypsynth/paperback/issues/59), [#61](https://github.com/trypsynth/paperback/issues/61).
 * Fixed high CPU usage in documents with long titles due to a regression in wxWidgets. [#60](https://github.com/trypsynth/paperback/issues/60).
 * Fixed loading UTF-8 text files.
-* Fixed nested TOC items in EPub books putting your cursor at the wrong position.
+* Fixed nested TOC items in Epub books putting your cursor at the wrong position.
 * Fixed a crash on application exit in certain cases. [#45](https://github.com/trypsynth/paperback/issues/45).
 * Added a checkbox in the options dialog to enable or disable word wrap!
 * It is now possible to donate to Paperback's development, either through the new donate item in the help menu or through the sponsor this project link at the bottom of the GitHub repository's main page.
@@ -222,14 +238,14 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * You can now only have one instance of Paperback running at a time. Running paperback.exe with a filename while it's already running will open that document in the already running instance.
 * You can now press delete on a document in the tab control to close it.
 
-### Version 0.21
+### Version 0.2.1
 * Added the total number of pages to the page label in the go to page dialog. [#46](https://github.com/trypsynth/paperback/issues/46).
 * Allow tabbing from the document content to your list of opened documents. [#19](https://github.com/trypsynth/paperback/issues/19).
 * Fixed the heading keystrokes sometimes opening recent documents if you had enough of them. [#47](https://github.com/trypsynth/paperback/issues/47).
 * Paperback will now remove unnecessary soft hyphens from text output.
 * Fixed heading navigation sometimes putting you on the wrong character.
 
-### Version 0.2
+### Version 0.2.0
 * Added markdown document support! [#22](https://github.com/trypsynth/paperback/issues/22).
 * Added PDF document support, including the ability to navigate between pages! [#12](https://github.com/trypsynth/paperback/issues/12), [#37](https://github.com/trypsynth/paperback/issues/37).
 * Added keystrokes for navigating by headings in HTML content, including epub books and markdown documents. These keystrokes were designed to work similar to a screen reader. [#3](https://github.com/trypsynth/paperback/issues/3).
@@ -241,5 +257,5 @@ Note: I consider a public GitHub sponsor grounds for automatic inclusion in this
 * Previously opened documents are now remembered across application restarts. This is configurable through the new options item in the tools menu. [#18](https://github.com/trypsynth/paperback/issues/18).
 * Added shift+f1 to open the readme directly in Paperback itself.
 
-### Version 0.1
+### Version 0.1.0
 * Initial release.
