@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bitflags::bitflags;
+
 use crate::utils::text::display_len;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

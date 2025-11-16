@@ -45,8 +45,8 @@ impl Parser for EpubParser {
 	}
 
 	fn parse(&self, context: &ParserContext) -> Result<Document> {
-		let mut epub = EpubDoc::new(&context.file_path)
-			.with_context(|| format!("Failed to open EPUB '{}'", context.file_path))?;
+		let mut epub =
+			EpubDoc::new(&context.file_path).with_context(|| format!("Failed to open EPUB '{}'", context.file_path))?;
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		let mut sections = Vec::new();
