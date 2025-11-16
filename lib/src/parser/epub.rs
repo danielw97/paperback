@@ -139,7 +139,6 @@ impl Parser for EpubParser {
 		document.spine_items = epub.spine.iter().map(|item| item.idref.clone()).collect();
 		document.manifest_items = manifest_items;
 		document.toc_items = toc_items;
-		document.compute_stats();
 		Ok(document)
 	}
 }

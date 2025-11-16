@@ -80,7 +80,9 @@ pub fn parse_document(context: &ParserContext) -> Result<Document> {
 	let parser = ParserRegistry::global()
 		.get_parser_for_extension(extension)
 		.ok_or_else(|| anyhow::anyhow!("No parser found for extension: .{}", extension))?;
-	parser.parse(context)
+	let mut doc = parser.parse(context)?;
+	doc.compute_stats();
+	Ok(doc)
 }
 
 pub fn get_all_parsers() -> Vec<ParserInfo> {

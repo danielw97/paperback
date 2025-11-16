@@ -80,7 +80,6 @@ impl Parser for MarkdownParser {
 		doc.set_buffer(buffer);
 		doc.toc_items = toc_items;
 		doc.id_positions = id_positions;
-		doc.compute_stats();
 		Ok(doc)
 	}
 }

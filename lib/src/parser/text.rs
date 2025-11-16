@@ -35,7 +35,6 @@ impl Parser for TextParser {
 			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
 		let mut doc = Document::new().with_title(title);
 		doc.set_buffer(DocumentBuffer::with_content(processed));
-		doc.compute_stats();
 		Ok(doc)
 	}
 }
