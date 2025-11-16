@@ -1,13 +1,14 @@
 use std::io::{Read, Seek};
 
+use anyhow::{Context, Result};
 use zip::ZipArchive;
 
 use super::text::url_decode;
 
-pub fn read_zip_entry_by_name<R: Read + Seek>(archive: &mut ZipArchive<R>, name: &str) -> Result<String, String> {
-	let mut entry = archive.by_name(name).map_err(|e| format!("Failed to get entry '{name}': {e}"))?;
+pub fn read_zip_entry_by_name<R: Read + Seek>(archive: &mut ZipArchive<R>, name: &str) -> Result<String> {
+	let mut entry = archive.by_name(name).with_context(|| format!("Failed to get entry '{name}'"))?;
 	let mut contents = String::new();
-	entry.read_to_string(&mut contents).map_err(|e| format!("Failed to read entry '{name}': {e}"))?;
+	entry.read_to_string(&mut contents).with_context(|| format!("Failed to read entry '{name}'"))?;
 	Ok(contents)
 }
 

@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::OnceLock};
 
+use anyhow::Result;
+
 use crate::document::{Document, ParserContext, ParserFlags};
 
 pub mod epub;
@@ -12,7 +14,7 @@ pub trait Parser: Send + Sync {
 	fn name(&self) -> &str;
 	fn extensions(&self) -> &[&str];
 	fn supported_flags(&self) -> ParserFlags;
-	fn parse(&self, context: &ParserContext) -> Result<Document, String>;
+	fn parse(&self, context: &ParserContext) -> Result<Document>;
 }
 
 #[derive(Clone)]
@@ -69,15 +71,15 @@ impl ParserRegistry {
 	}
 }
 
-pub fn parse_document(context: &ParserContext) -> Result<Document, String> {
+pub fn parse_document(context: &ParserContext) -> Result<Document> {
 	let path = std::path::Path::new(&context.file_path);
 	let extension = path
 		.extension()
 		.and_then(|e| e.to_str())
-		.ok_or_else(|| format!("No file extension found for: {}", context.file_path))?;
+		.ok_or_else(|| anyhow::anyhow!("No file extension found for: {}", context.file_path))?;
 	let parser = ParserRegistry::global()
 		.get_parser_for_extension(extension)
-		.ok_or_else(|| format!("No parser found for extension: .{}", extension))?;
+		.ok_or_else(|| anyhow::anyhow!("No parser found for extension: .{}", extension))?;
 	parser.parse(context)
 }
 

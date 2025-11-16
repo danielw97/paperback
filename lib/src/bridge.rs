@@ -172,7 +172,7 @@ fn convert_to_utf8(input: &[u8]) -> Result<String, String> {
 fn read_zip_entry(zip_path: &str, entry_name: &str) -> Result<String, String> {
 	let file = File::open(zip_path).map_err(|e| format!("Failed to open ZIP file: {e}"))?;
 	let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read ZIP archive: {e}"))?;
-	zip_module::read_zip_entry_by_name(&mut archive, entry_name)
+	zip_module::read_zip_entry_by_name(&mut archive, entry_name).map_err(|e| e.to_string())
 }
 
 fn find_zip_entry(zip_path: &str, entry_name: &str) -> Result<usize, String> {
@@ -195,7 +195,7 @@ fn parse_document(file_path: &str, password: &str) -> Result<ffi::FfiDocument, S
 	if !password.is_empty() {
 		context = context.with_password(password.to_string());
 	}
-	let doc = parser::parse_document(&context)?;
+	let doc = parser::parse_document(&context).map_err(|e| e.to_string())?;
 	// Convert TOC items to flat list (cxx doesn't support recursive types easily)
 	let toc_items = flatten_toc_items(&doc.toc_items);
 	Ok(ffi::FfiDocument {
@@ -259,7 +259,7 @@ fn flatten_toc_items(items: &[TocItem]) -> Vec<ffi::FfiTocItem> {
 fn convert_xml_to_text(content: &str) -> Result<ffi::FfiXmlConversion, String> {
 	let mut converter = XmlToText::new();
 	if !converter.convert(content) {
-		return Err("Failed to parse XML content".into());
+		return Err("Failed to parse XML content".to_string());
 	}
 	let headings = converter
 		.get_headings()

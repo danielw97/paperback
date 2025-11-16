@@ -1,5 +1,7 @@
 use std::{fs, path::Path};
 
+use anyhow::{Context, Result};
+
 use crate::{
 	document::{Document, DocumentBuffer, ParserContext, ParserFlags},
 	parser::Parser,
@@ -21,11 +23,11 @@ impl Parser for TextParser {
 		ParserFlags::NONE
 	}
 
-	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
+	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let bytes = fs::read(&context.file_path)
-			.map_err(|e| format!("Failed to open text file '{}': {}", context.file_path, e))?;
+			.with_context(|| format!("Failed to open text file '{}'", context.file_path))?;
 		if bytes.is_empty() {
-			return Err(format!("Text file is empty: {}", context.file_path));
+			anyhow::bail!("Text file is empty: {}", context.file_path);
 		}
 		let utf8_content = convert_to_utf8(&bytes);
 		let processed = remove_soft_hyphens(&utf8_content);

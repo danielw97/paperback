@@ -1,5 +1,6 @@
 use std::{fs, path::Path};
 
+use anyhow::{Context, Result};
 use pulldown_cmark::html::push_html;
 
 use super::utils::build_toc_from_headings;
@@ -25,11 +26,11 @@ impl Parser for MarkdownParser {
 		ParserFlags::SUPPORTS_TOC | ParserFlags::SUPPORTS_LISTS
 	}
 
-	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
+	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let bytes = fs::read(&context.file_path)
-			.map_err(|e| format!("Failed to open Markdown file '{}': {}", context.file_path, e))?;
+			.with_context(|| format!("Failed to open Markdown file '{}'", context.file_path))?;
 		if bytes.is_empty() {
-			return Err(format!("Markdown file is empty: {}", context.file_path));
+			anyhow::bail!("Markdown file is empty: {}", context.file_path);
 		}
 		let markdown_content = convert_to_utf8(&bytes);
 		let parser = pulldown_cmark::Parser::new(&markdown_content);
@@ -37,7 +38,7 @@ impl Parser for MarkdownParser {
 		push_html(&mut html_content, parser);
 		let mut converter = HtmlToText::new();
 		if !converter.convert(&html_content, HtmlSourceMode::Markdown) {
-			return Err(format!("Failed to convert Markdown to text: {}", context.file_path));
+			anyhow::bail!("Failed to convert Markdown to text: {}", context.file_path);
 		}
 		let title =
 			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();

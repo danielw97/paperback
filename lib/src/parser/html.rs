@@ -1,5 +1,7 @@
 use std::{fs, path::Path};
 
+use anyhow::{Context, Result};
+
 use super::utils::build_toc_from_headings;
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
@@ -23,16 +25,16 @@ impl Parser for HtmlParser {
 		ParserFlags::SUPPORTS_TOC | ParserFlags::SUPPORTS_LISTS
 	}
 
-	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
+	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let bytes = fs::read(&context.file_path)
-			.map_err(|e| format!("Failed to open HTML file '{}': {}", context.file_path, e))?;
+			.with_context(|| format!("Failed to open HTML file '{}'", context.file_path))?;
 		if bytes.is_empty() {
-			return Err(format!("HTML file is empty: {}", context.file_path));
+			anyhow::bail!("HTML file is empty: {}", context.file_path);
 		}
 		let html_content = convert_to_utf8(&bytes);
 		let mut converter = HtmlToText::new();
 		if !converter.convert(&html_content, HtmlSourceMode::NativeHtml) {
-			return Err(format!("Failed to convert HTML to text: {}", context.file_path));
+			anyhow::bail!("Failed to convert HTML to text: {}", context.file_path);
 		}
 		let extracted_title = converter.get_title();
 		let title = if extracted_title.is_empty() {

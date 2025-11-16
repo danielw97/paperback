@@ -3,6 +3,7 @@ use std::{
 	path::{Component, Path, PathBuf},
 };
 
+use anyhow::{Context, Result};
 use epub::doc::{EpubDoc, NavPoint};
 
 use crate::{
@@ -43,9 +44,9 @@ impl Parser for EpubParser {
 		ParserFlags::SUPPORTS_SECTIONS | ParserFlags::SUPPORTS_TOC | ParserFlags::SUPPORTS_LISTS
 	}
 
-	fn parse(&self, context: &ParserContext) -> Result<Document, String> {
+	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let mut epub = EpubDoc::new(&context.file_path)
-			.map_err(|e| format!("Failed to open EPUB '{}': {e}", context.file_path))?;
+			.with_context(|| format!("Failed to open EPUB '{}'", context.file_path))?;
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		let mut sections = Vec::new();
@@ -125,7 +126,7 @@ impl Parser for EpubParser {
 			} else {
 				format!("failed to convert spine items: {}", conversion_errors.join(", "))
 			};
-			return Err(format!("EPUB has no readable content ({reason})"));
+			anyhow::bail!("EPUB has no readable content ({reason})");
 		}
 		let title =
 			epub.get_title().filter(|t| !t.trim().is_empty()).unwrap_or_else(|| fallback_title(&context.file_path));
@@ -147,7 +148,7 @@ fn fallback_title(path: &str) -> String {
 	Path::new(path).file_stem().and_then(|stem| stem.to_str()).unwrap_or("Untitled").to_string()
 }
 
-fn convert_section(content: &str) -> Result<SectionContent, String> {
+fn convert_section(content: &str) -> Result<SectionContent> {
 	let mut xml_converter = XmlToText::new();
 	if xml_converter.convert(content) {
 		return Ok(SectionContent {
@@ -170,7 +171,7 @@ fn convert_section(content: &str) -> Result<SectionContent, String> {
 			id_positions: html_converter.get_id_positions().clone(),
 		});
 	}
-	Err("unsupported content".into())
+	anyhow::bail!("unsupported content")
 }
 
 fn heading_marker_type(level: i32) -> MarkerType {
