@@ -33,7 +33,6 @@ find_package(Gettext)
 find_package(lexbor CONFIG REQUIRED)
 find_package(MbedTLS CONFIG REQUIRED)
 find_package(pdfium CONFIG REQUIRED)
-find_package(pugixml CONFIG REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
 
 if(GETTEXT_FOUND)
@@ -145,7 +144,6 @@ target_link_libraries(paperback PRIVATE
 	lexbor::lexbor
 	MbedTLS::mbedcrypto
 	pdfium::pdfium
-	pugixml::pugixml
 	wx::base
 	wx::core
 	wx::net

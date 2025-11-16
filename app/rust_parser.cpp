@@ -128,13 +128,28 @@ std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 	}
 }
 
+rust_docx_parser::rust_docx_parser() : rust_parser("Word Documents", {"docx", "docm"}, parser_flags::supports_toc) {
+}
+
 rust_epub_parser::rust_epub_parser() : rust_parser("Epub Books", {"epub"}, parser_flags::supports_sections | parser_flags::supports_toc | parser_flags::supports_lists) {
+}
+
+rust_fb2_parser::rust_fb2_parser() : rust_parser("FictionBook Documents", {"fb2"}, parser_flags::supports_toc | parser_flags::supports_sections) {
 }
 
 rust_html_parser::rust_html_parser() : rust_parser("HTML Documents", {"htm", "html", "xhtml"}, parser_flags::supports_toc | parser_flags::supports_lists) {
 }
 
 rust_markdown_parser::rust_markdown_parser() : rust_parser("Markdown Files", {"md", "markdown", "mdown", "mkdn", "mkd"}, parser_flags::supports_toc) {
+}
+
+rust_odp_parser::rust_odp_parser() : rust_parser("OpenDocument Presentations", {"odp"}, parser_flags::none) {
+}
+
+rust_odt_parser::rust_odt_parser() : rust_parser("OpenDocument Text Files", {"odt"}, parser_flags::supports_toc) {
+}
+
+rust_pptx_parser::rust_pptx_parser() : rust_parser("PowerPoint Presentations", {"pptx", "pptm"}, parser_flags::supports_toc) {
 }
 
 rust_text_parser::rust_text_parser() : rust_parser("Text Files", {"txt", "log"}, parser_flags::none) {

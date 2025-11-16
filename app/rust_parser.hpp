@@ -29,9 +29,19 @@ private:
 	parser_flags flags_;
 };
 
+class rust_docx_parser final : public rust_parser {
+public:
+	rust_docx_parser();
+};
+
 class rust_epub_parser final : public rust_parser {
 public:
 	rust_epub_parser();
+};
+
+class rust_fb2_parser final : public rust_parser {
+public:
+	rust_fb2_parser();
 };
 
 class rust_html_parser final : public rust_parser {
@@ -44,12 +54,32 @@ public:
 	rust_markdown_parser();
 };
 
+class rust_odp_parser final : public rust_parser {
+public:
+	rust_odp_parser();
+};
+
+class rust_odt_parser final : public rust_parser {
+public:
+	rust_odt_parser();
+};
+
+class rust_pptx_parser final : public rust_parser {
+public:
+	rust_pptx_parser();
+};
+
 class rust_text_parser final : public rust_parser {
 public:
 	rust_text_parser();
 };
 
+REGISTER_PARSER(rust_docx_parser)
 REGISTER_PARSER(rust_epub_parser)
+REGISTER_PARSER(rust_fb2_parser)
 REGISTER_PARSER(rust_html_parser)
 REGISTER_PARSER(rust_markdown_parser)
+REGISTER_PARSER(rust_odp_parser)
+REGISTER_PARSER(rust_odt_parser)
+REGISTER_PARSER(rust_pptx_parser)
 REGISTER_PARSER(rust_text_parser)
