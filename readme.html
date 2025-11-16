@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Paperback - version 0.6</title>
+  <title>Paperback - version 0.6.1</title>
   <style>
     html {
       color: #1a1a1a;
@@ -166,7 +166,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Paperback - version 0.6</h1>
+<h1 class="title">Paperback - version 0.6.1</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
@@ -192,14 +192,24 @@ filetypes</a></li>
 </ul></li>
 <li><a href="#changelog" id="toc-changelog">Changelog</a>
 <ul>
-<li><a href="#version-0.6" id="toc-version-0.6">Version 0.6</a></li>
-<li><a href="#version-0.5" id="toc-version-0.5">Version 0.5</a></li>
-<li><a href="#version-0.41" id="toc-version-0.41">Version 0.41</a></li>
-<li><a href="#version-0.4" id="toc-version-0.4">Version 0.4</a></li>
-<li><a href="#version-0.3" id="toc-version-0.3">Version 0.3</a></li>
-<li><a href="#version-0.21" id="toc-version-0.21">Version 0.21</a></li>
-<li><a href="#version-0.2" id="toc-version-0.2">Version 0.2</a></li>
-<li><a href="#version-0.1" id="toc-version-0.1">Version 0.1</a></li>
+<li><a href="#version-0.6.1" id="toc-version-0.6.1">Version
+0.6.1</a></li>
+<li><a href="#version-0.6.0" id="toc-version-0.6.0">Version
+0.6.0</a></li>
+<li><a href="#version-0.5.0" id="toc-version-0.5.0">Version
+0.5.0</a></li>
+<li><a href="#version-0.4.1" id="toc-version-0.4.1">Version
+0.4.1</a></li>
+<li><a href="#version-0.4.0" id="toc-version-0.4.0">Version
+0.4.0</a></li>
+<li><a href="#version-0.3.0" id="toc-version-0.3.0">Version
+0.3.0</a></li>
+<li><a href="#version-0.2.1" id="toc-version-0.2.1">Version
+0.2.1</a></li>
+<li><a href="#version-0.2.0" id="toc-version-0.2.0">Version
+0.2.0</a></li>
+<li><a href="#version-0.1.0" id="toc-version-0.1.0">Version
+0.1.0</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -266,6 +276,8 @@ structure.</p>
 <li>Ctrl+Shift+G: bring up the go to percent dialog.</li>
 <li>Ctrl+P: Bring up the go to page dialog, if supported in your focused
 document.</li>
+<li>Alt+left: go to the previous item in the navigation history.</li>
+<li>Alt+right: go to the next item in the navigation history.</li>
 <li>Left bracket: go to the previous section.</li>
 <li>Right bracket: go to the next section.</li>
 <li>Shift+H: go to the previous heading.</li>
@@ -308,6 +320,7 @@ field.</li>
 <li>Ctrl+W: view the word count of the currently focused document.</li>
 <li>Ctrl+I: bring up the document info dialog.</li>
 <li>Ctrl+T: show the table of contents.</li>
+<li>F7: bring up the elements list.</li>
 <li>Ctrl+Shift+E: export your currently focused document’s bookmarks and
 reading position to a file for easy sharing.</li>
 <li>Ctrl+Shift+I: import metadata about a book from a .paperback
@@ -364,7 +377,46 @@ inclusion in this list.</p>
 <li>Steffen Schultz: German translation</li>
 </ul>
 <h1 id="changelog">Changelog</h1>
-<h2 id="version-0.6">Version 0.6</h2>
+<h2 id="version-0.6.1">Version 0.6.1</h2>
+<ul>
+<li>Added password-protected PDF support! <a
+href="https://github.com/trypsynth/paperback/issues/169">#169</a>.</li>
+<li>Added a very basic go to previous/next position feature. If you
+press enter on an internal link and it moves your cursor, that position
+will now be remembered, and can be navigated to with alt+left/right
+arrows. <a
+href="https://github.com/trypsynth/paperback/issues/115">#115</a>, <a
+href="https://github.com/trypsynth/paperback/pull/174">#174</a>.</li>
+<li>Added an elements list! Currently it only shows a tree of all the
+headings in your document or a list of links, but there are plans to
+expand it in the future. <a
+href="https://github.com/trypsynth/paperback/issues/173">#173</a>, <a
+href="https://github.com/trypsynth/paperback/pull/177">#177</a>.</li>
+<li>Added an option to start Paperback in maximized mode by default. <a
+href="https://github.com/trypsynth/paperback/issues/164">#164</a>, <a
+href="https://github.com/trypsynth/paperback/pull/172">#172</a>.</li>
+<li>Fixed links in some Epub documents not working properly. <a
+href="https://github.com/trypsynth/paperback/issues/167">#167</a>, <a
+href="https://github.com/trypsynth/paperback/pull/171">#171</a>, <a
+href="https://github.com/trypsynth/paperback/issues/178">#178</a>, <a
+href="https://github.com/trypsynth/paperback/pull/180">#180</a>.</li>
+<li>Fixed parsing Epub TOCs containing relative paths. <a
+href="https://github.com/trypsynth/paperback/issues/187">#187</a>.</li>
+<li>Fixed some epub documents not showing a title or author. <a
+href="https://github.com/trypsynth/paperback/issues/175">#175</a>.</li>
+<li>Fixed the titles of some epub chapters not showing up properly in
+the TOC dialog. <a
+href="https://github.com/trypsynth/paperback/pull/176">#176</a>.</li>
+<li>Fixed you not being able to use the space bar to activate the
+OK/cancel buttons in the TOC dialog. <a
+href="https://github.com/trypsynth/paperback/issues/170">#170</a>.</li>
+<li>Improved the handling of headings in Word documents. <a
+href="https://github.com/trypsynth/paperback/pull/183">#183</a>.</li>
+<li>You will now get spoken feedback if the recent documents list is
+empty when you try to bring up the dialog. <a
+href="https://github.com/trypsynth/paperback/issues/185">#185</a>.</li>
+</ul>
+<h2 id="version-0.6.0">Version 0.6.0</h2>
 <ul>
 <li>A new option to show the go menu in a far more compact form has been
 added to the options dialog, checked by default.</li>
@@ -503,7 +555,7 @@ including putting a blank line between slides in PPTX presentations,
 fixing the newline handling inside of paragraphs in word documents, and
 adding bullet points to list items.</li>
 </ul>
-<h2 id="version-0.5">Version 0.5</h2>
+<h2 id="version-0.5.0">Version 0.5.0</h2>
 <ul>
 <li>Added Microsoft Word document support! <a
 href="https://github.com/trypsynth/paperback/issues/27">#27</a>.</li>
@@ -549,7 +601,7 @@ href="https://github.com/trypsynth/paperback/issues/71">#71</a>.</li>
 <li>You will no longer be asked how you want to open an unrecognized
 file every single time you load it, only the first time.</li>
 </ul>
-<h2 id="version-0.41">Version 0.41</h2>
+<h2 id="version-0.4.1">Version 0.4.1</h2>
 <ul>
 <li>Added an optional start menu icon to the installer.</li>
 <li>The table of contents should now be cleaner in a few cases, for
@@ -562,7 +614,7 @@ href="https://github.com/trypsynth/paperback/issues/67">#67</a>.</li>
 <li>CHM documents should now show their title as set in the metadata
 file.</li>
 </ul>
-<h2 id="version-0.4">Version 0.4</h2>
+<h2 id="version-0.4.0">Version 0.4.0</h2>
 <ul>
 <li>Added CHM file support! <a
 href="https://github.com/trypsynth/paperback/issues/23">#23</a>.</li>
@@ -598,7 +650,7 @@ sanitized more strictly.</li>
 <li>Fixed table of contents navigation in epub 3 books with relative
 paths in their manifests.</li>
 </ul>
-<h2 id="version-0.3">Version 0.3</h2>
+<h2 id="version-0.3.0">Version 0.3.0</h2>
 <ul>
 <li>Fixed the table of contents in epub books with URL-encoded
 manifests. <a
@@ -612,7 +664,7 @@ href="https://github.com/trypsynth/paperback/issues/61">#61</a>.</li>
 regression in wxWidgets. <a
 href="https://github.com/trypsynth/paperback/issues/60">#60</a>.</li>
 <li>Fixed loading UTF-8 text files.</li>
-<li>Fixed nested TOC items in EPub books putting your cursor at the
+<li>Fixed nested TOC items in Epub books putting your cursor at the
 wrong position.</li>
 <li>Fixed a crash on application exit in certain cases. <a
 href="https://github.com/trypsynth/paperback/issues/45">#45</a>.</li>
@@ -636,7 +688,7 @@ open that document in the already running instance.</li>
 <li>You can now press delete on a document in the tab control to close
 it.</li>
 </ul>
-<h2 id="version-0.21">Version 0.21</h2>
+<h2 id="version-0.2.1">Version 0.2.1</h2>
 <ul>
 <li>Added the total number of pages to the page label in the go to page
 dialog. <a
@@ -652,7 +704,7 @@ output.</li>
 <li>Fixed heading navigation sometimes putting you on the wrong
 character.</li>
 </ul>
-<h2 id="version-0.2">Version 0.2</h2>
+<h2 id="version-0.2.0">Version 0.2.0</h2>
 <ul>
 <li>Added markdown document support! <a
 href="https://github.com/trypsynth/paperback/issues/22">#22</a>.</li>
@@ -684,7 +736,7 @@ menu. <a
 href="https://github.com/trypsynth/paperback/issues/18">#18</a>.</li>
 <li>Added shift+f1 to open the readme directly in Paperback itself.</li>
 </ul>
-<h2 id="version-0.1">Version 0.1</h2>
+<h2 id="version-0.1.0">Version 0.1.0</h2>
 <ul>
 <li>Initial release.</li>
 </ul>
