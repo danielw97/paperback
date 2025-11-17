@@ -100,25 +100,7 @@ endif()
 set(RUST_LIB_OUTPUT ${RUST_TARGET_DIR}/${RUST_PROFILE_DIR}/${RUST_LIB_NAME})
 set(CXX_BRIDGE_OUTPUT ${RUST_TARGET_DIR}/${RUST_PROFILE_DIR}/build/libpaperback-*/out/${CXX_BRIDGE_LIB})
 
-# The cxx-build generates headers during the cargo build
-if(WIN32)
-	# On Windows, we need to ensure cargo uses the correct MSVC linker, not Git's MSYS link.exe
-	# Find the Visual Studio environment
-	get_filename_component(MSVC_BIN_DIR ${CMAKE_LINKER} DIRECTORY)
-	add_custom_command(
-		OUTPUT ${RUST_LIB_OUTPUT}
-		COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_BIN_DIR};$ENV{PATH}" ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
-		DEPENDS ${LIBPAPERBACK_SOURCES}
-	)
-else()
-	add_custom_command(
-		OUTPUT ${RUST_LIB_OUTPUT}
-		COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release>
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
-		DEPENDS ${LIBPAPERBACK_SOURCES}
-	)
-endif()
+add_custom_command(OUTPUT ${RUST_LIB_OUTPUT} COMMAND ${CARGO_BIN} build --manifest-path ${CMAKE_SOURCE_DIR}/lib/Cargo.toml --target-dir ${RUST_TARGET_DIR} $<$<NOT:$<CONFIG:Debug>>:--release> WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lib DEPENDS ${LIBPAPERBACK_SOURCES})
 add_custom_target(libpaperback_rust DEPENDS ${RUST_LIB_OUTPUT})
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS app/*.cpp)
@@ -128,15 +110,7 @@ else()
 	add_executable(paperback ${SRC_FILES})
 endif()
 add_dependencies(paperback libpaperback_rust)
-
-# Include the cxx-generated headers directory
-# The headers are generated in the cargo OUT_DIR during the build
-target_include_directories(paperback PRIVATE
-	${CMAKE_SOURCE_DIR}/app
-	${CMAKE_SOURCE_DIR}
-	${RUST_TARGET_DIR}/cxxbridge
-)
-
+target_include_directories(paperback PRIVATE ${CMAKE_SOURCE_DIR}/app ${CMAKE_SOURCE_DIR} ${RUST_TARGET_DIR}/cxxbridge)
 target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
 	chmlib::chm
