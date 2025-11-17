@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result};
 
-unsafe extern {
+unsafe extern "C" {
 	fn chm_open(filename: *const c_char) -> *mut ChmFile;
 	fn chm_close(file: *mut ChmFile);
 	fn chm_enumerate(file: *mut ChmFile, what: c_int, callback: ChmEnumerateCallback, context: *mut c_void) -> c_int;
@@ -35,7 +35,7 @@ pub struct ChmUnitInfo {
 	pub path: [c_char; 512],
 }
 
-pub type ChmEnumerateCallback = extern fn(*mut ChmFile, *mut ChmUnitInfo, *mut c_void) -> c_int;
+pub type ChmEnumerateCallback = extern "C" fn(*mut ChmFile, *mut ChmUnitInfo, *mut c_void) -> c_int;
 
 pub const CHM_ENUMERATE_ALL: c_int = 3;
 pub const CHM_ENUMERATE_NORMAL: c_int = 1;
@@ -57,11 +57,11 @@ impl ChmHandle {
 	pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
 		let path_str = path.as_ref().to_string_lossy().to_string();
 		let c_path =
-			CString::new(path_str.as_str()).with_context(|| format!("Invalid path for CHM file: {}", path_str))?;
+			CString::new(path_str.as_str()).with_context(|| format!("Invalid path for CHM file: {path_str}"))?;
 		unsafe {
 			let handle = chm_open(c_path.as_ptr());
 			if handle.is_null() {
-				anyhow::bail!("Failed to open CHM file: {}", path_str);
+				anyhow::bail!("Failed to open CHM file: {path_str}");
 			}
 			Ok(Self { handle })
 		}
@@ -71,18 +71,18 @@ impl ChmHandle {
 	where
 		F: FnMut(&ChmUnitInfo) -> bool,
 	{
-		extern fn trampoline<F>(_file: *mut ChmFile, ui: *mut ChmUnitInfo, context: *mut c_void) -> c_int
+		extern "C" fn trampoline<F>(_file: *mut ChmFile, ui: *mut ChmUnitInfo, context: *mut c_void) -> c_int
 		where
 			F: FnMut(&ChmUnitInfo) -> bool,
 		{
 			unsafe {
-				let callback: &mut F = &mut *(context as *mut F);
+				let callback: &mut F = &mut *context.cast::<F>();
 				let should_continue = callback(&*ui);
 				if should_continue { CHM_ENUMERATOR_CONTINUE } else { CHM_ENUMERATOR_SUCCESS }
 			}
 		}
 		unsafe {
-			let context: *mut c_void = &mut callback as *mut F as *mut c_void;
+			let context: *mut c_void = (&raw mut callback).cast::<c_void>();
 			let result = chm_enumerate(self.handle, what, trampoline::<F>, context);
 			if result != 0 { Ok(()) } else { anyhow::bail!("CHM enumeration failed") }
 		}
@@ -92,15 +92,15 @@ impl ChmHandle {
 		let c_path = CString::new(path).context("Invalid file path")?;
 		unsafe {
 			let mut ui: ChmUnitInfo = std::mem::zeroed();
-			let resolve_result = chm_resolve_object(self.handle, c_path.as_ptr(), &mut ui);
+			let resolve_result = chm_resolve_object(self.handle, c_path.as_ptr(), &raw mut ui);
 			if resolve_result != CHM_RESOLVE_SUCCESS {
-				anyhow::bail!("Failed to resolve CHM object: {}", path);
+				anyhow::bail!("Failed to resolve CHM object: {path}");
 			}
 			if ui.length == 0 {
 				return Ok(Vec::new());
 			}
 			let mut buffer = vec![0u8; ui.length as usize];
-			let bytes_read = chm_retrieve_object(self.handle, &ui, buffer.as_mut_ptr(), 0, ui.length);
+			let bytes_read = chm_retrieve_object(self.handle, &raw const ui, buffer.as_mut_ptr(), 0, ui.length);
 			if bytes_read != ui.length {
 				anyhow::bail!("Failed to read complete CHM file (expected {} bytes, got {})", ui.length, bytes_read);
 			}

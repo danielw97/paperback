@@ -37,10 +37,8 @@ impl Parser for ChmParser {
 		chm.enumerate(CHM_ENUMERATE_ALL, |ui| {
 			let path = unit_info_path(ui);
 			let lower_path = path.to_lowercase();
-			if lower_path.contains(".hhc") {
-				if hhc_file.is_empty() || lower_path.contains("index.hhc") {
-					hhc_file = path.clone();
-				}
+			if lower_path.contains(".hhc") && (hhc_file.is_empty() || lower_path.contains("index.hhc")) {
+				hhc_file = path.clone();
 			}
 			if (lower_path.contains(".htm") || lower_path.contains(".html"))
 				&& !path.contains("/#")
@@ -52,7 +50,7 @@ impl Parser for ChmParser {
 		})?;
 		html_files.sort();
 		let title = parse_system_file(&mut chm).unwrap_or_else(|| extract_title_from_path(&context.file_path));
-		let mut toc_items = if !hhc_file.is_empty() { parse_hhc_file(&mut chm, &hhc_file)? } else { Vec::new() };
+		let mut toc_items = if hhc_file.is_empty() { Vec::new() } else { parse_hhc_file(&mut chm, &hhc_file)? };
 		let ordered_files = build_ordered_file_list(&html_files, &toc_items);
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
@@ -79,7 +77,7 @@ impl Parser for ChmParser {
 			file_positions.insert(normalized_path.clone(), section_start);
 			for (id, relative_pos) in section_id_positions {
 				let absolute_pos = section_start + relative_pos;
-				id_positions.insert(format!("{}#{}", normalized_path, id), absolute_pos);
+				id_positions.insert(format!("{normalized_path}#{id}"), absolute_pos);
 			}
 			buffer.append(&text);
 			for heading in headings {
@@ -140,7 +138,7 @@ fn parse_system_file(chm: &mut ChmHandle) -> Option<String> {
 }
 
 fn parse_hhc_file(chm: &mut ChmHandle, hhc_path: &str) -> Result<Vec<TocItem>> {
-	let content_bytes = chm.read_file(hhc_path).with_context(|| format!("Failed to read .hhc file: {}", hhc_path))?;
+	let content_bytes = chm.read_file(hhc_path).with_context(|| format!("Failed to read .hhc file: {hhc_path}"))?;
 	if content_bytes.is_empty() {
 		return Ok(Vec::new());
 	}
@@ -267,11 +265,11 @@ fn calculate_offset_from_reference(
 	let (file_path, fragment) = if let Some(pos) = reference.find('#') {
 		(&reference[..pos], Some(&reference[pos + 1..]))
 	} else {
-		(reference.as_ref(), None)
+		(reference, None)
 	};
 	let normalized_path = normalize_path(file_path);
 	if let Some(fragment_id) = fragment {
-		let id_key = format!("{}#{}", normalized_path, fragment_id);
+		let id_key = format!("{normalized_path}#{fragment_id}");
 		if let Some(&offset) = id_positions.get(&id_key) {
 			return offset;
 		}
