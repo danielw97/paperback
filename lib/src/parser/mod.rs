@@ -43,30 +43,33 @@ impl ParserRegistry {
 		self.parsers.insert(name, Box::new(parser));
 	}
 
+	#[must_use] 
 	pub fn get_parser(&self, name: &str) -> Option<&dyn Parser> {
 		self.parsers.get(name).map(|p| &**p)
 	}
 
+	#[must_use] 
 	pub fn get_parser_for_extension(&self, extension: &str) -> Option<&dyn Parser> {
 		let ext = extension.to_lowercase();
 		self.parsers.values().find(|p| p.extensions().iter().any(|e| e.to_lowercase() == ext)).map(|p| &**p)
 	}
 
+	#[must_use] 
 	pub fn all_parsers(&self) -> Vec<ParserInfo> {
 		self.parsers
 			.values()
 			.map(|p| ParserInfo {
 				name: p.name().to_string(),
-				extensions: p.extensions().iter().map(|s| s.to_string()).collect(),
+				extensions: p.extensions().iter().map(|s| (*s).to_string()).collect(),
 				flags: p.supported_flags(),
 			})
 			.collect()
 	}
 
-	pub fn global() -> &'static ParserRegistry {
+	pub fn global() -> &'static Self {
 		static REGISTRY: OnceLock<ParserRegistry> = OnceLock::new();
 		REGISTRY.get_or_init(|| {
-			let mut registry = ParserRegistry::new();
+			let mut registry = Self::new();
 			registry.register(docx::DocxParser);
 			registry.register(epub::EpubParser);
 			registry.register(fb2::Fb2Parser);
@@ -89,16 +92,18 @@ pub fn parse_document(context: &ParserContext) -> Result<Document> {
 		.ok_or_else(|| anyhow::anyhow!("No file extension found for: {}", context.file_path))?;
 	let parser = ParserRegistry::global()
 		.get_parser_for_extension(extension)
-		.ok_or_else(|| anyhow::anyhow!("No parser found for extension: .{}", extension))?;
+		.ok_or_else(|| anyhow::anyhow!("No parser found for extension: .{extension}"))?;
 	let mut doc = parser.parse(context)?;
 	doc.compute_stats();
 	Ok(doc)
 }
 
+#[must_use] 
 pub fn get_all_parsers() -> Vec<ParserInfo> {
 	ParserRegistry::global().all_parsers()
 }
 
+#[must_use] 
 pub fn get_parser_name_for_extension(extension: &str) -> Option<String> {
 	ParserRegistry::global().get_parser_for_extension(extension).map(|p| p.name().to_string())
 }

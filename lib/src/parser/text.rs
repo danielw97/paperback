@@ -11,7 +11,7 @@ use crate::{
 pub struct TextParser;
 
 impl Parser for TextParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"Text Files"
 	}
 

@@ -16,7 +16,7 @@ use crate::{
 pub struct OdtParser;
 
 impl Parser for OdtParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"OpenDocument Text Files"
 	}
 

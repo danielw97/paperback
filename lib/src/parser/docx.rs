@@ -19,7 +19,7 @@ use crate::{
 pub struct DocxParser;
 
 impl Parser for DocxParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"Word Documents"
 	}
 
@@ -158,7 +158,7 @@ fn process_hyperlink(
 	let link_target = if !r_id.is_empty() {
 		rels.get(r_id).cloned().unwrap_or_default()
 	} else if !anchor.is_empty() {
-		format!("#{}", anchor)
+		format!("#{anchor}")
 	} else {
 		String::new()
 	};
@@ -268,7 +268,7 @@ fn parse_hyperlink_instruction(instruction: &str) -> String {
 		if first != last {
 			let target = &instruction[first + 1..last];
 			if instruction.contains("\\l") {
-				return format!("#{}", target);
+				return format!("#{target}");
 			}
 			return target.to_string();
 		}
@@ -311,6 +311,6 @@ fn extract_field_display_text(paragraph: Node, instr_run: Node) -> (String, bool
 }
 
 fn extract_number_from_string(s: &str) -> Option<i32> {
-	let digits: String = s.chars().filter(|c| c.is_ascii_digit()).collect();
+	let digits: String = s.chars().filter(char::is_ascii_digit).collect();
 	digits.parse().ok()
 }

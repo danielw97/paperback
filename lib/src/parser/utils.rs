@@ -63,7 +63,7 @@ pub fn build_toc_from_headings(headings: &[HeadingInfo]) -> Vec<TocItem> {
 	toc
 }
 
-pub fn heading_level_to_marker_type(level: i32) -> MarkerType {
+pub const fn heading_level_to_marker_type(level: i32) -> MarkerType {
 	match level {
 		1 => MarkerType::Heading1,
 		2 => MarkerType::Heading2,
@@ -74,7 +74,7 @@ pub fn heading_level_to_marker_type(level: i32) -> MarkerType {
 	}
 }
 
-pub fn marker_type_to_heading_level(marker_type: MarkerType) -> i32 {
+pub const fn marker_type_to_heading_level(marker_type: MarkerType) -> i32 {
 	match marker_type {
 		MarkerType::Heading1 => 1,
 		MarkerType::Heading2 => 2,
@@ -145,9 +145,9 @@ pub fn find_child_element<'a, 'input>(node: Node<'a, 'input>, name: &str) -> Opt
 }
 
 pub fn read_zip_entry(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> Result<String> {
-	let mut entry = archive.by_name(name).with_context(|| format!("Failed to get zip entry '{}'", name))?;
+	let mut entry = archive.by_name(name).with_context(|| format!("Failed to get zip entry '{name}'"))?;
 	let mut contents = String::new();
-	Read::read_to_string(&mut entry, &mut contents).with_context(|| format!("Failed to read zip entry '{}'", name))?;
+	Read::read_to_string(&mut entry, &mut contents).with_context(|| format!("Failed to read zip entry '{name}'"))?;
 	Ok(contents)
 }
 

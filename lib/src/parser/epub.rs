@@ -35,7 +35,7 @@ struct SectionMeta {
 pub struct EpubParser;
 
 impl Parser for EpubParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"EPUB Books"
 	}
 
@@ -67,13 +67,10 @@ impl Parser for EpubParser {
 			if !is_textual_mime(&resource_mime) {
 				continue;
 			}
-			let (content, _) = match epub.get_resource_str(idref) {
-				Some(tuple) => tuple,
-				None => {
-					conversion_errors.push(idref.clone());
-					continue;
-				}
-			};
+			let (content, _) = if let Some(tuple) = epub.get_resource_str(idref) { tuple } else {
+   					conversion_errors.push(idref.clone());
+   					continue;
+   				};
 			let section_path = normalize_path(&resource_path);
 			let section_start = buffer.current_position();
 			let section_label = format!("Section {}", index + 1);
@@ -119,7 +116,7 @@ impl Parser for EpubParser {
 					sections.push(SectionMeta { path: section_path.clone(), start: section_start, end: section_end });
 				}
 				Err(err) => {
-					conversion_errors.push(format!("{} ({err})", idref));
+					conversion_errors.push(format!("{idref} ({err})"));
 				}
 			}
 		}
@@ -233,7 +230,7 @@ fn build_toc(navpoints: &[NavPoint], sections: &[SectionMeta], id_positions: &Ha
 fn convert_navpoint(nav: &NavPoint, sections: &[SectionMeta], id_positions: &HashMap<String, usize>) -> TocItem {
 	let reference = normalize_path(&nav.content);
 	let offset = compute_navpoint_offset(&reference, sections, id_positions);
-	let mut item = TocItem::new(nav.label.clone(), reference.clone(), offset);
+	let mut item = TocItem::new(nav.label.clone(), reference, offset);
 	item.children = nav.children.iter().map(|child| convert_navpoint(child, sections, id_positions)).collect();
 	item
 }

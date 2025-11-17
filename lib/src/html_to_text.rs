@@ -144,7 +144,7 @@ impl HtmlToText {
 		&self.list_items
 	}
 
-	pub fn get_id_positions(&self) -> &HashMap<String, usize> {
+	pub const fn get_id_positions(&self) -> &HashMap<String, usize> {
 		&self.id_positions
 	}
 
@@ -170,7 +170,7 @@ impl HtmlToText {
 		self.cached_char_length = 0;
 	}
 
-	fn get_bullet_for_level(level: i32) -> &'static str {
+	const fn get_bullet_for_level(level: i32) -> &'static str {
 		match level {
 			1 => "•",
 			2 => "◦",
@@ -253,7 +253,7 @@ impl HtmlToText {
 					}
 					if tag_name.len() == 2
 						&& tag_name.starts_with('h')
-						&& tag_name.chars().nth(1).map_or(false, |c| c.is_ascii_digit())
+						&& tag_name.chars().nth(1).is_some_and(|c| c.is_ascii_digit())
 					{
 						if let Some(level_char) = tag_name.chars().nth(1) {
 							if let Some(level) = level_char.to_digit(10) {

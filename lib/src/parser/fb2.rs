@@ -15,7 +15,7 @@ use crate::{
 pub struct Fb2Parser;
 
 impl Parser for Fb2Parser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"FictionBook Documents"
 	}
 

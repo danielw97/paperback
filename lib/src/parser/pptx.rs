@@ -15,7 +15,7 @@ use crate::{
 pub struct PptxParser;
 
 impl Parser for PptxParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"PowerPoint Presentations"
 	}
 
@@ -51,9 +51,9 @@ impl Parser for PptxParser {
 		for (index, slide_name) in slides.iter().enumerate() {
 			let slide_content = read_zip_entry(&mut archive, slide_name)?;
 			let slide_doc = XmlDocument::parse(&slide_content)
-				.with_context(|| format!("Failed to parse slide '{}'", slide_name))?;
+				.with_context(|| format!("Failed to parse slide '{slide_name}'"))?;
 			let slide_base = slide_name.rsplit('/').next().unwrap_or("");
-			let rels_name = format!("ppt/slides/_rels/{}.rels", slide_base);
+			let rels_name = format!("ppt/slides/_rels/{slide_base}.rels");
 			let rels = read_ooxml_relationships(&mut archive, &rels_name)?;
 			let slide_title = extract_slide_title(slide_doc.root());
 			let slide_start = buffer.current_position();
@@ -84,7 +84,7 @@ impl Parser for PptxParser {
 }
 
 fn extract_slide_number(slide_name: &str) -> usize {
-	slide_name.chars().filter(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0)
+	slide_name.chars().filter(char::is_ascii_digit).collect::<String>().parse().unwrap_or(0)
 }
 
 fn extract_slide_title(root: Node) -> String {

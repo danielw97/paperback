@@ -16,7 +16,7 @@ use crate::{
 pub struct OdpParser;
 
 impl Parser for OdpParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"OpenDocument Presentations"
 	}
 

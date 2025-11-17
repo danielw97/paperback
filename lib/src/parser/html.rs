@@ -13,7 +13,7 @@ use crate::{
 pub struct HtmlParser;
 
 impl Parser for HtmlParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"HTML Files"
 	}
 

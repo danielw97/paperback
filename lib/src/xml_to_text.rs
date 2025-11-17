@@ -65,7 +65,7 @@ impl XmlToText {
 	}
 
 	#[must_use]
-	pub fn get_id_positions(&self) -> &HashMap<String, usize> {
+	pub const fn get_id_positions(&self) -> &HashMap<String, usize> {
 		&self.id_positions
 	}
 
@@ -147,7 +147,7 @@ impl XmlToText {
 					self.list_items.push(ListItemInfo {
 						offset: self.get_current_text_position(),
 						level: self.list_level,
-						text: li_text.clone(),
+						text: li_text,
 					});
 					self.current_line.push_str(&" ".repeat((self.list_level * 2) as usize));
 					let bullet = if let Some(style) = self.list_style_stack.last_mut() {
@@ -201,7 +201,7 @@ impl XmlToText {
 								if !normalized.is_empty() {
 									self.headings.push(HeadingInfo {
 										offset: heading_offset,
-										level: level as i32,
+										level: i32::from(level),
 										text: normalized,
 									});
 								}
@@ -323,7 +323,7 @@ impl XmlToText {
 		)
 	}
 
-	fn get_bullet_for_level(level: i32) -> &'static str {
+	const fn get_bullet_for_level(level: i32) -> &'static str {
 		match level {
 			1 => "\u{2022}",
 			2 => "\u{25E6}",

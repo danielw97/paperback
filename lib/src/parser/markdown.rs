@@ -14,7 +14,7 @@ use crate::{
 pub struct MarkdownParser;
 
 impl Parser for MarkdownParser {
-	fn name(&self) -> &str {
+	fn name(&self) -> &'static str {
 		"Markdown Files"
 	}
 

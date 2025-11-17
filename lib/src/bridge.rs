@@ -236,7 +236,7 @@ fn parse_document(file_path: &str, password: &str) -> Result<ffi::FfiDocument, S
 
 fn get_parser_for_extension(extension: &str) -> Result<String, String> {
 	parser::get_parser_name_for_extension(extension)
-		.ok_or_else(|| format!("No parser found for extension: .{}", extension))
+		.ok_or_else(|| format!("No parser found for extension: .{extension}"))
 }
 
 fn flatten_toc_items(items: &[TocItem]) -> Vec<ffi::FfiTocItem> {
