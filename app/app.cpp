@@ -11,6 +11,7 @@
 #include "constants.hpp"
 #include "libpaperback/src/bridge.rs.h"
 #include "parser.hpp"
+#include "rust_parser.hpp"
 #include "translation_manager.hpp"
 #include "utils.hpp"
 #include <cstdint>
@@ -112,6 +113,7 @@ bool app::OnInit() {
 	if (!preferred_language.IsEmpty()) {
 		translation_manager::instance().set_language(preferred_language);
 	}
+	register_rust_parsers();
 	single_instance_checker = std::make_unique<wxSingleInstanceChecker>(SINGLE_INSTANCE_NAME);
 	if (single_instance_checker->IsAnotherRunning()) {
 		if (argc > 1) {

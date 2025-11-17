@@ -50,11 +50,6 @@ impl XmlToText {
 	}
 
 	#[must_use]
-	pub fn get_lines(&self) -> &[String] {
-		&self.lines
-	}
-
-	#[must_use]
 	pub fn get_text(&self) -> String {
 		if self.lines.is_empty() {
 			return String::new();

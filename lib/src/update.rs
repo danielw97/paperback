@@ -79,7 +79,8 @@ fn pick_download_url(is_installer: bool, assets: &[ReleaseAsset]) -> Option<Stri
 	None
 }
 
-fn fetch_latest_release(user_agent: &str) -> Result<GithubRelease, UpdateError> {
+fn fetch_latest_release() -> Result<GithubRelease, UpdateError> {
+	let user_agent = format!("libpaperback/{}", env!("CARGO_PKG_VERSION"));
 	let client = Client::builder()
 		.user_agent(user_agent)
 		.timeout(Duration::from_secs(15))
@@ -100,8 +101,7 @@ fn fetch_latest_release(user_agent: &str) -> Result<GithubRelease, UpdateError> 
 pub fn check_for_updates(current_version: &str, is_installer: bool) -> Result<UpdateCheckOutcome, UpdateError> {
 	let current = parse_semver_value(current_version)
 		.ok_or_else(|| UpdateError::InvalidVersion("Current version was not a valid semantic version.".to_string()))?;
-	let user_agent = format!("libpaperback/{}", env!("CARGO_PKG_VERSION"));
-	let release = fetch_latest_release(&user_agent)?;
+	let release = fetch_latest_release()?;
 	let latest_semver = parse_semver_value(&release.tag_name).ok_or_else(|| {
 		UpdateError::InvalidResponse("Latest release tag does not contain a valid semantic version.".to_string())
 	})?;

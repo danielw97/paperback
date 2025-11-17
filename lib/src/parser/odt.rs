@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 use anyhow::{Context, Result};
 use roxmltree::{Document as XmlDocument, Node, NodeType};
@@ -6,7 +6,10 @@ use zip::ZipArchive;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
-	parser::{Parser, utils::build_toc_from_buffer},
+	parser::{
+		Parser,
+		utils::{build_toc_from_buffer, collect_element_text, extract_title_from_path, heading_level_to_marker_type},
+	},
 	utils::zip::read_zip_entry_by_name,
 };
 
@@ -36,8 +39,7 @@ impl Parser for OdtParser {
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		traverse(xml_doc.root(), &mut buffer, &mut id_positions);
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let toc_items = build_toc_from_buffer(&buffer);
 		let mut document = Document::new().with_title(title);
 		document.set_buffer(buffer);
@@ -53,18 +55,11 @@ fn traverse(node: Node, buffer: &mut DocumentBuffer, id_positions: &mut HashMap<
 		if tag_name == "h" {
 			let level = node.attribute("outline-level").and_then(|s| s.parse::<i32>().ok()).unwrap_or(1);
 			let heading_offset = buffer.current_position();
-			let heading_text = get_element_text(node);
+			let heading_text = collect_element_text(node);
 			if !heading_text.is_empty() {
 				buffer.append(&heading_text);
 				buffer.append("\n");
-				let marker_type = match level {
-					1 => MarkerType::Heading1,
-					2 => MarkerType::Heading2,
-					3 => MarkerType::Heading3,
-					4 => MarkerType::Heading4,
-					5 => MarkerType::Heading5,
-					_ => MarkerType::Heading6,
-				};
+				let marker_type = heading_level_to_marker_type(level);
 				buffer.add_marker(Marker::new(marker_type, heading_offset).with_text(heading_text).with_level(level));
 			}
 			return; // Don't traverse children, we already got the text
@@ -77,7 +72,7 @@ fn traverse(node: Node, buffer: &mut DocumentBuffer, id_positions: &mut HashMap<
 		if tag_name == "a" {
 			if let Some(href) = node.attribute("href") {
 				let link_offset = buffer.current_position();
-				let link_text = get_element_text(node);
+				let link_text = collect_element_text(node);
 				if !link_text.is_empty() {
 					buffer.append(&link_text);
 					buffer.add_marker(
@@ -104,22 +99,5 @@ fn traverse(node: Node, buffer: &mut DocumentBuffer, id_positions: &mut HashMap<
 fn traverse_children(node: Node, buffer: &mut DocumentBuffer, id_positions: &mut HashMap<String, usize>) {
 	for child in node.children() {
 		traverse(child, buffer, id_positions);
-	}
-}
-
-fn get_element_text(node: Node) -> String {
-	let mut text = String::new();
-	collect_text(node, &mut text);
-	text.trim().to_string()
-}
-
-fn collect_text(node: Node, text: &mut String) {
-	if node.node_type() == NodeType::Text {
-		if let Some(t) = node.text() {
-			text.push_str(t);
-		}
-	}
-	for child in node.children() {
-		collect_text(child, text);
 	}
 }

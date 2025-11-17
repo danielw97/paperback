@@ -5,7 +5,10 @@ use roxmltree::{Document as XmlDocument, Node, NodeType};
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
-	parser::Parser,
+	parser::{
+		Parser,
+		utils::{collect_element_text, find_child_element, heading_level_to_marker_type},
+	},
 	xml_to_text::XmlToText,
 };
 
@@ -43,14 +46,7 @@ impl Parser for Fb2Parser {
 		let mut buffer = DocumentBuffer::new();
 		buffer.append(&converter.get_text());
 		for heading in converter.get_headings() {
-			let marker_type = match heading.level {
-				1 => MarkerType::Heading1,
-				2 => MarkerType::Heading2,
-				3 => MarkerType::Heading3,
-				4 => MarkerType::Heading4,
-				5 => MarkerType::Heading5,
-				_ => MarkerType::Heading6,
-			};
+			let marker_type = heading_level_to_marker_type(heading.level);
 			buffer.add_marker(
 				Marker::new(marker_type, heading.offset).with_text(heading.text.clone()).with_level(heading.level),
 			);
@@ -149,12 +145,12 @@ fn extract_metadata(xml_content: &str) -> (String, String) {
 	if let Some(title_node) =
 		find_element_by_path(doc.root(), &["FictionBook", "description", "title-info", "book-title"])
 	{
-		title = get_element_text_content(title_node).trim().to_string();
+		title = collect_element_text(title_node);
 	}
-	if let Some(author_node) = find_element_by_path(doc.root(), &["FictionBook", "description", "title-info", "author"]) {
-		let first_name =
-			find_child_by_name(author_node, "first-name").map(get_element_text_content).unwrap_or_default();
-		let last_name = find_child_by_name(author_node, "last-name").map(get_element_text_content).unwrap_or_default();
+	if let Some(author_node) = find_element_by_path(doc.root(), &["FictionBook", "description", "title-info", "author"])
+	{
+		let first_name = find_child_element(author_node, "first-name").map(collect_element_text).unwrap_or_default();
+		let last_name = find_child_element(author_node, "last-name").map(collect_element_text).unwrap_or_default();
 		if !first_name.is_empty() {
 			author.push_str(&first_name);
 		}
@@ -187,30 +183,4 @@ fn find_element_by_path<'a, 'input>(node: Node<'a, 'input>, path: &[&str]) -> Op
 		}
 	}
 	None
-}
-
-fn find_child_by_name<'a, 'input>(node: Node<'a, 'input>, name: &str) -> Option<Node<'a, 'input>> {
-	for child in node.children() {
-		if child.node_type() == NodeType::Element && child.tag_name().name() == name {
-			return Some(child);
-		}
-	}
-	None
-}
-
-fn get_element_text_content(node: Node) -> String {
-	let mut text = String::new();
-	collect_text_content(node, &mut text);
-	text
-}
-
-fn collect_text_content(node: Node, text: &mut String) {
-	if node.node_type() == NodeType::Text {
-		if let Some(t) = node.text() {
-			text.push_str(t);
-		}
-	}
-	for child in node.children() {
-		collect_text_content(child, text);
-	}
 }

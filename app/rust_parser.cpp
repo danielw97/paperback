@@ -14,6 +14,7 @@
 #include <memory>
 #include <stdexcept>
 #include <wx/translation.h>
+#include <wx/msgdlg.h>
 
 namespace {
 wxString to_wxstring(const rust::String& rust_str) {
@@ -90,7 +91,7 @@ void populate_manifest_items(document& doc, const rust::Vec<FfiManifestItem>& ff
 		doc.manifest_items[std::string(entry.id)] = std::string(entry.path);
 	}
 }
-} // anonymous namespace
+} // namespace
 
 rust_parser::rust_parser(wxString parser_name, std::vector<wxString> exts, parser_flags flags) : parser_name_{std::move(parser_name)}, extensions_{std::move(exts)}, flags_{flags} {
 }
@@ -128,29 +129,27 @@ std::unique_ptr<document> rust_parser::load(const parser_context& ctx) const {
 	}
 }
 
-rust_docx_parser::rust_docx_parser() : rust_parser("Word Documents", {"docx", "docm"}, parser_flags::supports_toc) {
-}
+namespace {
+std::vector<std::unique_ptr<rust_parser>> g_rust_parser_instances;
+} // namespace
 
-rust_epub_parser::rust_epub_parser() : rust_parser("Epub Books", {"epub"}, parser_flags::supports_sections | parser_flags::supports_toc | parser_flags::supports_lists) {
-}
-
-rust_fb2_parser::rust_fb2_parser() : rust_parser("FictionBook Documents", {"fb2"}, parser_flags::supports_toc | parser_flags::supports_sections) {
-}
-
-rust_html_parser::rust_html_parser() : rust_parser("HTML Documents", {"htm", "html", "xhtml"}, parser_flags::supports_toc | parser_flags::supports_lists) {
-}
-
-rust_markdown_parser::rust_markdown_parser() : rust_parser("Markdown Files", {"md", "markdown", "mdown", "mkdn", "mkd"}, parser_flags::supports_toc) {
-}
-
-rust_odp_parser::rust_odp_parser() : rust_parser("OpenDocument Presentations", {"odp"}, parser_flags::none) {
-}
-
-rust_odt_parser::rust_odt_parser() : rust_parser("OpenDocument Text Files", {"odt"}, parser_flags::supports_toc) {
-}
-
-rust_pptx_parser::rust_pptx_parser() : rust_parser("PowerPoint Presentations", {"pptx", "pptm"}, parser_flags::supports_toc) {
-}
-
-rust_text_parser::rust_text_parser() : rust_parser("Text Files", {"txt", "log"}, parser_flags::none) {
+void register_rust_parsers() {
+	try {
+		const auto parser_infos = get_available_parsers();
+		g_rust_parser_instances.reserve(parser_infos.size());
+		for (const auto& info : parser_infos) {
+			const wxString name = to_wxstring(info.name);
+			std::vector<wxString> extensions;
+			extensions.reserve(info.extensions.size());
+			for (const auto& ext : info.extensions) {
+				extensions.push_back(to_wxstring(ext));
+			}
+			const auto flags = static_cast<parser_flags>(info.flags);
+			auto parser_ptr = std::make_unique<rust_parser>(name, std::move(extensions), flags);
+			parser_registry::register_parser(*parser_ptr);
+			g_rust_parser_instances.push_back(std::move(parser_ptr));
+		}
+	} catch (const std::exception& e) {
+		wxMessageBox(e.what(), "Error", wxICON_ERROR);
+	}
 }

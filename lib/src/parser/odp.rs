@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 use anyhow::{Context, Result};
 use roxmltree::{Document as XmlDocument, Node, NodeType};
@@ -6,7 +6,10 @@ use zip::ZipArchive;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
-	parser::Parser,
+	parser::{
+		Parser,
+		utils::{collect_element_text, extract_title_from_path},
+	},
 	utils::zip::read_zip_entry_by_name,
 };
 
@@ -52,8 +55,7 @@ impl Parser for OdpParser {
 				);
 			}
 		}
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let mut document = Document::new().with_title(title);
 		document.set_buffer(buffer);
 		document.id_positions = id_positions;
@@ -88,7 +90,7 @@ fn traverse_page(node: Node, text: &mut String, buffer: &DocumentBuffer) {
 		if tag_name == "a" {
 			if let Some(href) = node.attribute("href") {
 				let link_start = buffer.current_position() + text.len();
-				let link_text = get_element_text(node);
+				let link_text = collect_element_text(node);
 				if !link_text.is_empty() {
 					text.push_str(&link_text);
 					// Note: We can't add links directly here since we need mutable buffer
@@ -116,22 +118,5 @@ fn traverse_page(node: Node, text: &mut String, buffer: &DocumentBuffer) {
 fn traverse_children(node: Node, text: &mut String, buffer: &DocumentBuffer) {
 	for child in node.children() {
 		traverse_page(child, text, buffer);
-	}
-}
-
-fn get_element_text(node: Node) -> String {
-	let mut text = String::new();
-	collect_text(node, &mut text);
-	text.trim().to_string()
-}
-
-fn collect_text(node: Node, text: &mut String) {
-	if node.node_type() == NodeType::Text {
-		if let Some(t) = node.text() {
-			text.push_str(t);
-		}
-	}
-	for child in node.children() {
-		collect_text(child, text);
 	}
 }

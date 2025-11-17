@@ -115,7 +115,11 @@ mod tests {
 
 	#[test]
 	fn test_extension_lookup() {
-		assert!(get_parser_name_for_extension("txt").is_some());
+		assert!(get_parser_name_for_extension("epub").is_some());
+		assert!(get_parser_name_for_extension("html").is_some());
 		assert!(get_parser_name_for_extension("md").is_some());
+		assert!(get_parser_name_for_extension("txt").is_some());
+		assert!(get_parser_name_for_extension("zizzy").is_none());
+		assert!(get_parser_name_for_extension("").is_none());
 	}
 }

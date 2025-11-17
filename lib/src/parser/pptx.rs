@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::{BufReader, Read}, path::Path};
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 use anyhow::{Context, Result};
 use roxmltree::{Document as XmlDocument, Node, NodeType};
@@ -6,7 +6,10 @@ use zip::ZipArchive;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
-	parser::Parser,
+	parser::{
+		Parser,
+		utils::{collect_text_from_tagged_elements, extract_title_from_path, read_ooxml_relationships, read_zip_entry},
+	},
 };
 
 pub struct PptxParser;
@@ -49,7 +52,9 @@ impl Parser for PptxParser {
 			let slide_content = read_zip_entry(&mut archive, slide_name)?;
 			let slide_doc = XmlDocument::parse(&slide_content)
 				.with_context(|| format!("Failed to parse slide '{}'", slide_name))?;
-			let rels = read_slide_rels(&mut archive, slide_name)?;
+			let slide_base = slide_name.rsplit('/').next().unwrap_or("");
+			let rels_name = format!("ppt/slides/_rels/{}.rels", slide_base);
+			let rels = read_ooxml_relationships(&mut archive, &rels_name)?;
 			let slide_title = extract_slide_title(slide_doc.root());
 			let slide_start = buffer.current_position();
 			let slide_text = extract_slide_text(slide_doc.root(), &buffer, &rels);
@@ -69,8 +74,7 @@ impl Parser for PptxParser {
 				toc_items.push(TocItem::new(toc_name, String::new(), slide_start));
 			}
 		}
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let mut document = Document::new().with_title(title);
 		document.set_buffer(buffer);
 		document.id_positions = id_positions;
@@ -83,41 +87,10 @@ fn extract_slide_number(slide_name: &str) -> usize {
 	slide_name.chars().filter(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0)
 }
 
-fn read_zip_entry(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> Result<String> {
-	let mut entry = archive.by_name(name).with_context(|| format!("Failed to get zip entry '{}'", name))?;
-	let mut contents = String::new();
-	Read::read_to_string(&mut entry, &mut contents)
-		.with_context(|| format!("Failed to read zip entry '{}'", name))?;
-	Ok(contents)
-}
-
-fn read_slide_rels(archive: &mut ZipArchive<BufReader<File>>, slide_name: &str) -> Result<HashMap<String, String>> {
-	let mut rels = HashMap::new();
-	let slide_base = slide_name.rsplit('/').next().unwrap_or("");
-	let rels_name = format!("ppt/slides/_rels/{}.rels", slide_base);
-	if let Ok(rels_content) = read_zip_entry(archive, &rels_name) {
-		if let Ok(rels_doc) = XmlDocument::parse(&rels_content) {
-			for node in rels_doc.descendants() {
-				if node.node_type() == NodeType::Element && node.tag_name().name() == "Relationship" {
-					let id = node.attribute("Id").unwrap_or("").to_string();
-					let target = node.attribute("Target").unwrap_or("").to_string();
-					let rel_type = node.attribute("Type").unwrap_or("");
-					if rel_type == "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
-						&& !id.is_empty() && !target.is_empty()
-					{
-						rels.insert(id, target);
-					}
-				}
-			}
-		}
-	}
-	Ok(rels)
-}
-
 fn extract_slide_title(root: Node) -> String {
 	for shape in find_elements_by_name(root, "sp") {
 		if is_title_shape(shape) {
-			let text = get_all_text(shape);
+			let text = collect_text_from_tagged_elements(shape, "t");
 			if !text.trim().is_empty() {
 				return text.trim().to_string();
 			}
@@ -171,7 +144,7 @@ fn traverse_for_text(node: Node, text: &mut String, buffer: &DocumentBuffer, rel
 			if let Some(r_id) = node.attribute("id") {
 				if let Some(link_target) = rels.get(r_id) {
 					if let Some(parent) = node.parent() {
-						let link_text = get_all_text(parent);
+						let link_text = collect_text_from_tagged_elements(parent, "t");
 						if !link_text.is_empty() {
 							let link_start = buffer.current_position() + text.len();
 							text.push_str(&link_text);
@@ -203,22 +176,5 @@ fn collect_elements_by_name<'a, 'input>(node: Node<'a, 'input>, name: &str, resu
 	}
 	for child in node.children() {
 		collect_elements_by_name(child, name, result);
-	}
-}
-
-fn get_all_text(node: Node) -> String {
-	let mut text = String::new();
-	collect_all_text(node, &mut text);
-	text
-}
-
-fn collect_all_text(node: Node, text: &mut String) {
-	if node.node_type() == NodeType::Element && node.tag_name().name() == "t" {
-		if let Some(t) = node.text() {
-			text.push_str(t);
-		}
-	}
-	for child in node.children() {
-		collect_all_text(child, text);
 	}
 }

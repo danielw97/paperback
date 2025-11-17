@@ -1,10 +1,10 @@
-use std::{fs, path::Path};
+use std::fs;
 
 use anyhow::{Context, Result};
 
 use crate::{
 	document::{Document, DocumentBuffer, ParserContext, ParserFlags},
-	parser::Parser,
+	parser::{Parser, utils::extract_title_from_path},
 	utils::{encoding::convert_to_utf8, text::remove_soft_hyphens},
 };
 
@@ -26,13 +26,9 @@ impl Parser for TextParser {
 	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let bytes = fs::read(&context.file_path)
 			.with_context(|| format!("Failed to open text file '{}'", context.file_path))?;
-		if bytes.is_empty() {
-			anyhow::bail!("Text file is empty: {}", context.file_path);
-		}
 		let utf8_content = convert_to_utf8(&bytes);
 		let processed = remove_soft_hyphens(&utf8_content);
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let mut doc = Document::new().with_title(title);
 		doc.set_buffer(DocumentBuffer::with_content(processed));
 		Ok(doc)

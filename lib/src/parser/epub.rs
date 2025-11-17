@@ -9,7 +9,10 @@ use epub::doc::{EpubDoc, NavPoint};
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
 	html_to_text::{HeadingInfo, HtmlSourceMode, HtmlToText, LinkInfo, ListInfo, ListItemInfo},
-	parser::Parser,
+	parser::{
+		Parser,
+		utils::{extract_title_from_path, heading_level_to_marker_type},
+	},
 	utils::text::trim_string,
 	xml_to_text::XmlToText,
 };
@@ -81,7 +84,7 @@ impl Parser for EpubParser {
 						id_positions.insert(id, section_start + relative);
 					}
 					for heading in section.headings {
-						let marker_type = heading_marker_type(heading.level);
+						let marker_type = heading_level_to_marker_type(heading.level);
 						buffer.add_marker(
 							Marker::new(marker_type, section_start + heading.offset)
 								.with_text(heading.text.clone())
@@ -128,8 +131,10 @@ impl Parser for EpubParser {
 			};
 			anyhow::bail!("EPUB has no readable content ({reason})");
 		}
-		let title =
-			epub.get_title().filter(|t| !t.trim().is_empty()).unwrap_or_else(|| fallback_title(&context.file_path));
+		let title = epub
+			.get_title()
+			.filter(|t| !t.trim().is_empty())
+			.unwrap_or_else(|| extract_title_from_path(&context.file_path));
 		let author =
 			epub.mdata("creator").map(|item| trim_string(&item.value)).filter(|s| !s.is_empty()).unwrap_or_default();
 		let toc_items = build_toc(&epub.toc, &sections, &id_positions);
@@ -141,10 +146,6 @@ impl Parser for EpubParser {
 		document.toc_items = toc_items;
 		Ok(document)
 	}
-}
-
-fn fallback_title(path: &str) -> String {
-	Path::new(path).file_stem().and_then(|stem| stem.to_str()).unwrap_or("Untitled").to_string()
 }
 
 fn convert_section(content: &str) -> Result<SectionContent> {
@@ -171,17 +172,6 @@ fn convert_section(content: &str) -> Result<SectionContent> {
 		});
 	}
 	anyhow::bail!("unsupported content")
-}
-
-fn heading_marker_type(level: i32) -> MarkerType {
-	match level {
-		1 => MarkerType::Heading1,
-		2 => MarkerType::Heading2,
-		3 => MarkerType::Heading3,
-		4 => MarkerType::Heading4,
-		5 => MarkerType::Heading5,
-		_ => MarkerType::Heading6,
-	}
 }
 
 fn resolve_href(current_path: &str, target: &str) -> String {

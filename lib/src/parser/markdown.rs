@@ -1,9 +1,9 @@
-use std::{fs, path::Path};
+use std::fs;
 
 use anyhow::{Context, Result};
 use pulldown_cmark::html::push_html;
 
-use super::utils::build_toc_from_headings;
+use super::utils::{build_toc_from_headings, extract_title_from_path, heading_level_to_marker_type};
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
 	html_to_text::{HtmlSourceMode, HtmlToText},
@@ -40,20 +40,12 @@ impl Parser for MarkdownParser {
 		if !converter.convert(&html_content, HtmlSourceMode::Markdown) {
 			anyhow::bail!("Failed to convert Markdown to text: {}", context.file_path);
 		}
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let text = converter.get_text();
 		let mut buffer = DocumentBuffer::with_content(text);
 		let id_positions = converter.get_id_positions().clone();
 		for heading in converter.get_headings() {
-			let marker_type = match heading.level {
-				1 => MarkerType::Heading1,
-				2 => MarkerType::Heading2,
-				3 => MarkerType::Heading3,
-				4 => MarkerType::Heading4,
-				5 => MarkerType::Heading5,
-				_ => MarkerType::Heading6,
-			};
+			let marker_type = heading_level_to_marker_type(heading.level);
 			buffer.add_marker(
 				Marker::new(marker_type, heading.offset).with_text(heading.text.clone()).with_level(heading.level),
 			);

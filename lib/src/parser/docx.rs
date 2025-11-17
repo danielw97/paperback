@@ -1,9 +1,4 @@
-use std::{
-	collections::HashMap,
-	fs::File,
-	io::{BufReader, Read},
-	path::Path,
-};
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 use anyhow::{Context, Result};
 use roxmltree::{Document as XmlDocument, Node, NodeType};
@@ -12,7 +7,13 @@ use zip::ZipArchive;
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
 	html_to_text::HeadingInfo,
-	parser::{Parser, utils::build_toc_from_buffer},
+	parser::{
+		Parser,
+		utils::{
+			build_toc_from_buffer, collect_ooxml_run_text, extract_title_from_path, find_child_element,
+			heading_level_to_marker_type, read_ooxml_relationships, read_zip_entry,
+		},
+	},
 };
 
 pub struct DocxParser;
@@ -35,15 +36,14 @@ impl Parser for DocxParser {
 			.with_context(|| format!("Failed to open DOCX file '{}'", context.file_path))?;
 		let mut archive = ZipArchive::new(BufReader::new(file))
 			.with_context(|| format!("Failed to read DOCX as zip '{}'", context.file_path))?;
-		let rels = read_relationships(&mut archive)?;
+		let rels = read_ooxml_relationships(&mut archive, "word/_rels/document.xml.rels")?;
 		let doc_content = read_zip_entry(&mut archive, "word/document.xml")?;
 		let doc_xml = XmlDocument::parse(&doc_content).context("Failed to parse word/document.xml")?;
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		let mut headings = Vec::new();
 		traverse(doc_xml.root(), &mut buffer, &mut headings, &mut id_positions, &rels);
-		let title =
-			Path::new(&context.file_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+		let title = extract_title_from_path(&context.file_path);
 		let toc_items = build_toc_from_buffer(&buffer);
 		let mut document = Document::new().with_title(title);
 		document.set_buffer(buffer);
@@ -51,34 +51,6 @@ impl Parser for DocxParser {
 		document.toc_items = toc_items;
 		Ok(document)
 	}
-}
-
-fn read_zip_entry(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> Result<String> {
-	let mut entry = archive.by_name(name).with_context(|| format!("Failed to get zip entry '{}'", name))?;
-	let mut contents = String::new();
-	Read::read_to_string(&mut entry, &mut contents).with_context(|| format!("Failed to read zip entry '{}'", name))?;
-	Ok(contents)
-}
-
-fn read_relationships(archive: &mut ZipArchive<BufReader<File>>) -> Result<HashMap<String, String>> {
-	let mut rels = HashMap::new();
-	if let Ok(rels_content) = read_zip_entry(archive, "word/_rels/document.xml.rels") {
-		if let Ok(rels_doc) = XmlDocument::parse(&rels_content) {
-			for node in rels_doc.descendants() {
-				if node.node_type() == NodeType::Element && node.tag_name().name() == "Relationship" {
-					let id = node.attribute("Id").unwrap_or("").to_string();
-					let target = node.attribute("Target").unwrap_or("").to_string();
-					let rel_type = node.attribute("Type").unwrap_or("");
-					if rel_type == "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
-						&& !id.is_empty() && !target.is_empty()
-					{
-						rels.insert(id, target);
-					}
-				}
-			}
-		}
-	}
-	Ok(rels)
 }
 
 fn traverse(
@@ -132,11 +104,11 @@ fn process_paragraph(
 			process_hyperlink(child, &mut paragraph_text, buffer, rels, paragraph_start);
 		} else if tag_name == "r" {
 			if heading_level == 0 {
-				if let Some(rpr_node) = find_child_by_name(child, "rPr") {
+				if let Some(rpr_node) = find_child_element(child, "rPr") {
 					heading_level = get_run_heading_level(rpr_node);
 				}
 			}
-			if let Some(instr_text_node) = find_child_by_name(child, "instrText") {
+			if let Some(instr_text_node) = find_child_element(child, "instrText") {
 				if let Some(instruction) = instr_text_node.text() {
 					if instruction.contains("HYPERLINK") {
 						let link_target = parse_hyperlink_instruction(instruction);
@@ -155,7 +127,7 @@ fn process_paragraph(
 					}
 				}
 			}
-			paragraph_text.push_str(&get_run_text(child));
+			paragraph_text.push_str(&collect_ooxml_run_text(child));
 		}
 	}
 	let trimmed = paragraph_text.trim();
@@ -165,14 +137,7 @@ fn process_paragraph(
 		let heading_text =
 			if is_paragraph_style_heading { trimmed.to_string() } else { extract_heading_text(element, heading_level) };
 		if !heading_text.is_empty() {
-			let marker_type = match heading_level {
-				1 => MarkerType::Heading1,
-				2 => MarkerType::Heading2,
-				3 => MarkerType::Heading3,
-				4 => MarkerType::Heading4,
-				5 => MarkerType::Heading5,
-				_ => MarkerType::Heading6,
-			};
+			let marker_type = heading_level_to_marker_type(heading_level);
 			buffer.add_marker(
 				Marker::new(marker_type, paragraph_start).with_text(heading_text.clone()).with_level(heading_level),
 			);
@@ -200,7 +165,7 @@ fn process_hyperlink(
 	let mut link_text = String::new();
 	for child in element.children() {
 		if child.node_type() == NodeType::Element && child.tag_name().name() == "r" {
-			link_text.push_str(&get_run_text(child));
+			link_text.push_str(&collect_ooxml_run_text(child));
 		}
 	}
 	if link_text.is_empty() {
@@ -249,7 +214,7 @@ fn get_paragraph_heading_level(pr_element: Node) -> i32 {
 
 fn get_run_heading_level(rpr_element: Node) -> i32 {
 	const MAX_HEADING_LEVEL: i32 = 9;
-	if let Some(rstyle_node) = find_child_by_name(rpr_element, "rStyle") {
+	if let Some(rstyle_node) = find_child_element(rpr_element, "rStyle") {
 		if let Some(style) = rstyle_node.attribute("val") {
 			let style_lower = style.to_lowercase();
 			if style_lower.starts_with("heading") && style_lower.ends_with("char") {
@@ -264,26 +229,6 @@ fn get_run_heading_level(rpr_element: Node) -> i32 {
 	0
 }
 
-fn get_run_text(run_element: Node) -> String {
-	let mut text = String::new();
-	for child in run_element.children() {
-		if child.node_type() != NodeType::Element {
-			continue;
-		}
-		let tag_name = child.tag_name().name();
-		if tag_name == "t" {
-			if let Some(t) = child.text() {
-				text.push_str(t);
-			}
-		} else if tag_name == "tab" {
-			text.push('\t');
-		} else if tag_name == "br" {
-			text.push('\n');
-		}
-	}
-	text
-}
-
 fn extract_heading_text(paragraph: Node, heading_level: i32) -> String {
 	let mut text = String::new();
 	for child in paragraph.children() {
@@ -293,21 +238,21 @@ fn extract_heading_text(paragraph: Node, heading_level: i32) -> String {
 		let tag_name = child.tag_name().name();
 		if tag_name == "r" {
 			let mut run_level = 0;
-			if let Some(rpr_node) = find_child_by_name(child, "rPr") {
+			if let Some(rpr_node) = find_child_element(child, "rPr") {
 				run_level = get_run_heading_level(rpr_node);
 			}
 			if run_level == heading_level {
-				text.push_str(&get_run_text(child));
+				text.push_str(&collect_ooxml_run_text(child));
 			}
 		} else if tag_name == "hyperlink" {
 			for link_child in child.children() {
 				if link_child.node_type() == NodeType::Element && link_child.tag_name().name() == "r" {
 					let mut run_level = 0;
-					if let Some(rpr_node) = find_child_by_name(link_child, "rPr") {
+					if let Some(rpr_node) = find_child_element(link_child, "rPr") {
 						run_level = get_run_heading_level(rpr_node);
 					}
 					if run_level == heading_level {
-						text.push_str(&get_run_text(link_child));
+						text.push_str(&collect_ooxml_run_text(link_child));
 					}
 				}
 			}
@@ -349,7 +294,7 @@ fn extract_field_display_text(paragraph: Node, instr_run: Node) -> (String, bool
 	}
 	for child in children.iter().skip(start_index) {
 		if child.node_type() == NodeType::Element && child.tag_name().name() == "r" {
-			if let Some(fld_char) = find_child_by_name(*child, "fldChar") {
+			if let Some(fld_char) = find_child_element(*child, "fldChar") {
 				if let Some(fld_type) = fld_char.attribute("fldCharType") {
 					if fld_type == "separate" {
 						in_display_text = true;
@@ -358,20 +303,11 @@ fn extract_field_display_text(paragraph: Node, instr_run: Node) -> (String, bool
 					}
 				}
 			} else if in_display_text {
-				display_text.push_str(&get_run_text(*child));
+				display_text.push_str(&collect_ooxml_run_text(*child));
 			}
 		}
 	}
 	(display_text, true)
-}
-
-fn find_child_by_name<'a, 'input>(node: Node<'a, 'input>, name: &str) -> Option<Node<'a, 'input>> {
-	for child in node.children() {
-		if child.node_type() == NodeType::Element && child.tag_name().name() == name {
-			return Some(child);
-		}
-	}
-	None
 }
 
 fn extract_number_from_string(s: &str) -> Option<i32> {
