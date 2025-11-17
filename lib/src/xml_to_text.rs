@@ -38,9 +38,8 @@ impl XmlToText {
 
 	pub fn convert(&mut self, xml_content: &str) -> bool {
 		self.clear();
-		let doc = match Document::parse(xml_content) {
-			Ok(doc) => doc,
-			Err(_) => return false,
+		let Ok(doc) = Document::parse(xml_content) else {
+			return false;
 		};
 		for child in doc.root().children() {
 			self.process_node(child);
@@ -120,17 +119,13 @@ impl XmlToText {
 					self.section_offsets.push(self.get_current_text_position());
 				}
 				if tag_name == "a" {
-					let link_text = self.get_element_text(node);
+					let link_text = Self::get_element_text(node);
 					if !link_text.is_empty() {
 						let href = node.attribute("href").unwrap_or("").to_string();
 						let processed_link_text = collapse_whitespace(&link_text);
 						let link_offset = self.get_current_text_position();
 						self.current_line.push_str(&processed_link_text);
-						self.links.push(LinkInfo {
-							offset: link_offset,
-							text: processed_link_text,
-							reference: href,
-						});
+						self.links.push(LinkInfo { offset: link_offset, text: processed_link_text, reference: href });
 						skip_children = true;
 					}
 				} else if tag_name == "body" {
@@ -142,13 +137,13 @@ impl XmlToText {
 					self.finalize_current_line();
 				} else if tag_name == "li" {
 					self.finalize_current_line();
-					let li_text = self.get_element_text(node);
+					let li_text = Self::get_element_text(node);
 					self.list_items.push(ListItemInfo {
 						offset: self.get_current_text_position(),
 						level: self.list_level,
 						text: li_text,
 					});
-					self.current_line.push_str(&" ".repeat((self.list_level * 2) as usize));
+					self.current_line.push_str(&" ".repeat(usize::try_from(self.list_level * 2).unwrap_or(0)));
 					let bullet = if let Some(style) = self.list_style_stack.last_mut() {
 						if style.ordered {
 							let bullet = format!("{}. ", style.item_number);
@@ -194,7 +189,7 @@ impl XmlToText {
 					if (1..=6).contains(&level) {
 						self.finalize_current_line();
 						let heading_offset = self.get_current_text_position();
-						let text = self.get_element_text(node);
+						let text = Self::get_element_text(node);
 						if !text.is_empty() {
 							let normalized = trim_string(&collapse_whitespace(&text));
 							if !normalized.is_empty() {
@@ -276,14 +271,14 @@ impl XmlToText {
 		self.cached_char_length + display_len(trimmed)
 	}
 
-	fn get_element_text(&self, node: Node<'_, '_>) -> String {
-		self.collect_text(node)
+	fn get_element_text(node: Node<'_, '_>) -> String {
+		Self::collect_text(node)
 	}
 
-	fn collect_text(&self, node: Node<'_, '_>) -> String {
+	fn collect_text(node: Node<'_, '_>) -> String {
 		match node.node_type() {
 			NodeType::Text => node.text().unwrap_or("").to_string(),
-			NodeType::Element => node.children().map(|child| self.collect_text(child)).collect(),
+			NodeType::Element => node.children().map(Self::collect_text).collect(),
 			_ => String::new(),
 		}
 	}

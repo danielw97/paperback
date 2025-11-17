@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo clippy:*)",
+      "Bash(powershell -Command \"cargo clippy 2>&1 | Select-Object -First 200\")",
+      "Bash(rustup which:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

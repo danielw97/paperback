@@ -33,9 +33,9 @@ impl Parser for OdtParser {
 			.with_context(|| format!("Failed to open ODT file '{}'", context.file_path))?;
 		let mut archive = ZipArchive::new(BufReader::new(file))
 			.with_context(|| format!("Failed to read ODT as zip '{}'", context.file_path))?;
-		let content = read_zip_entry_by_name(&mut archive, "content.xml")
+		let content_str = read_zip_entry_by_name(&mut archive, "content.xml")
 			.context("ODT file does not contain content.xml or it is empty")?;
-		let xml_doc = XmlDocument::parse(&content).context("Invalid ODT content.xml")?;
+		let xml_doc = XmlDocument::parse(&content_str).context("Invalid ODT content.xml")?;
 		let mut buffer = DocumentBuffer::new();
 		let mut id_positions = HashMap::new();
 		traverse(xml_doc.root(), &mut buffer, &mut id_positions);

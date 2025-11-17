@@ -37,7 +37,10 @@ impl Parser for PptxParser {
 		for i in 0..archive.len() {
 			if let Ok(entry) = archive.by_index(i) {
 				let name = entry.name().to_string();
-				if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") && !name.contains("_rels") {
+				if name.starts_with("ppt/slides/slide")
+					&& std::path::Path::new(&name).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("xml"))
+					&& !name.contains("_rels")
+				{
 					slides.push(name);
 				}
 			}
@@ -51,11 +54,11 @@ impl Parser for PptxParser {
 		let mut toc_items = Vec::new();
 		for (index, slide_name) in slides.iter().enumerate() {
 			let slide_content = read_zip_entry(&mut archive, slide_name)?;
-			let slide_doc = XmlDocument::parse(&slide_content)
-				.with_context(|| format!("Failed to parse slide '{slide_name}'"))?;
+			let slide_doc =
+				XmlDocument::parse(&slide_content).with_context(|| format!("Failed to parse slide '{slide_name}'"))?;
 			let slide_base = slide_name.rsplit('/').next().unwrap_or("");
 			let rels_name = format!("ppt/slides/_rels/{slide_base}.rels");
-			let rels = read_ooxml_relationships(&mut archive, &rels_name)?;
+			let rels = read_ooxml_relationships(&mut archive, &rels_name);
 			let slide_title = extract_slide_title(slide_doc.root());
 			let slide_start = buffer.current_position();
 			let mut links = Vec::new();
@@ -73,9 +76,7 @@ impl Parser for PptxParser {
 				);
 				for link in links {
 					buffer.add_marker(
-						Marker::new(MarkerType::Link, link.offset)
-							.with_text(link.text)
-							.with_reference(link.reference),
+						Marker::new(MarkerType::Link, link.offset).with_text(link.text).with_reference(link.reference),
 					);
 				}
 				let toc_name =

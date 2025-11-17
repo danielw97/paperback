@@ -19,6 +19,11 @@ pub trait Parser: Send + Sync {
 	fn name(&self) -> &str;
 	fn extensions(&self) -> &[&str];
 	fn supported_flags(&self) -> ParserFlags;
+	/// Parse a document from the given context.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the file cannot be read or parsed.
 	fn parse(&self, context: &ParserContext) -> Result<Document>;
 }
 
@@ -43,18 +48,18 @@ impl ParserRegistry {
 		self.parsers.insert(name, Box::new(parser));
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn get_parser(&self, name: &str) -> Option<&dyn Parser> {
 		self.parsers.get(name).map(|p| &**p)
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn get_parser_for_extension(&self, extension: &str) -> Option<&dyn Parser> {
 		let ext = extension.to_lowercase();
 		self.parsers.values().find(|p| p.extensions().iter().any(|e| e.to_lowercase() == ext)).map(|p| &**p)
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn all_parsers(&self) -> Vec<ParserInfo> {
 		self.parsers
 			.values()
@@ -84,6 +89,14 @@ impl ParserRegistry {
 	}
 }
 
+/// Parse a document from the given context.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - No file extension is found
+/// - No parser is available for the file extension
+/// - The parser fails to parse the file
 pub fn parse_document(context: &ParserContext) -> Result<Document> {
 	let path = std::path::Path::new(&context.file_path);
 	let extension = path
@@ -98,12 +111,12 @@ pub fn parse_document(context: &ParserContext) -> Result<Document> {
 	Ok(doc)
 }
 
-#[must_use] 
+#[must_use]
 pub fn get_all_parsers() -> Vec<ParserInfo> {
 	ParserRegistry::global().all_parsers()
 }
 
-#[must_use] 
+#[must_use]
 pub fn get_parser_name_for_extension(extension: &str) -> Option<String> {
 	ParserRegistry::global().get_parser_for_extension(extension).map(|p| p.name().to_string())
 }

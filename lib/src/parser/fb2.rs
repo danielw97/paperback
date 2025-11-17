@@ -28,12 +28,12 @@ impl Parser for Fb2Parser {
 	}
 
 	fn parse(&self, context: &ParserContext) -> Result<Document> {
+		const CLOSING_TAG: &str = "</FictionBook>";
 		let mut xml_content = fs::read_to_string(&context.file_path)
 			.with_context(|| format!("Failed to read FB2 file '{}'", context.file_path))?;
 		if xml_content.is_empty() {
 			anyhow::bail!("FB2 file is empty");
 		}
-		const CLOSING_TAG: &str = "</FictionBook>";
 		if let Some(pos) = xml_content.rfind(CLOSING_TAG) {
 			xml_content.truncate(pos + CLOSING_TAG.len());
 		}
@@ -136,9 +136,8 @@ fn escape_xml(s: &str) -> String {
 }
 
 fn extract_metadata(xml_content: &str) -> (String, String) {
-	let doc = match XmlDocument::parse(xml_content) {
-		Ok(d) => d,
-		Err(_) => return (String::new(), String::new()),
+	let Ok(doc) = XmlDocument::parse(xml_content) else {
+		return (String::new(), String::new());
 	};
 	let mut title = String::new();
 	let mut author = String::new();

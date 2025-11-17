@@ -21,7 +21,7 @@ pub enum MarkerType {
 }
 
 impl MarkerType {
-	#[must_use] 
+	#[must_use]
 	pub const fn to_int(&self) -> i32 {
 		match self {
 			Self::Heading1 => 0,
@@ -39,7 +39,7 @@ impl MarkerType {
 		}
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub const fn from_int(value: i32) -> Option<Self> {
 		match value {
 			0 => Some(Self::Heading1),
@@ -69,24 +69,24 @@ pub struct Marker {
 }
 
 impl Marker {
-	#[must_use] 
+	#[must_use]
 	pub const fn new(marker_type: MarkerType, position: usize) -> Self {
 		Self { marker_type, position, text: String::new(), reference: String::new(), level: 0 }
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_text(mut self, text: String) -> Self {
 		self.text = text;
 		self
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_reference(mut self, reference: String) -> Self {
 		self.reference = reference;
 		self
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub const fn with_level(mut self, level: i32) -> Self {
 		self.level = level;
 		self
@@ -101,12 +101,12 @@ pub struct DocumentBuffer {
 }
 
 impl DocumentBuffer {
-	#[must_use] 
+	#[must_use]
 	pub const fn new() -> Self {
 		Self { content: String::new(), markers: Vec::new(), content_display_len: 0 }
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_content(content: String) -> Self {
 		let len = display_len(&content);
 		Self { content, markers: Vec::new(), content_display_len: len }
@@ -121,7 +121,7 @@ impl DocumentBuffer {
 		self.content_display_len += display_len(text);
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub const fn current_position(&self) -> usize {
 		self.content_display_len
 	}
@@ -142,7 +142,7 @@ pub struct TocItem {
 }
 
 impl TocItem {
-	#[must_use] 
+	#[must_use]
 	pub const fn new(name: String, reference: String, offset: usize) -> Self {
 		Self { name, reference, offset, children: Vec::new() }
 	}
@@ -160,7 +160,7 @@ pub struct DocumentStats {
 }
 
 impl DocumentStats {
-	#[must_use] 
+	#[must_use]
 	pub fn from_text(text: &str) -> Self {
 		let char_count = text.chars().count();
 		let line_count = text.lines().count();
@@ -182,7 +182,7 @@ pub struct Document {
 }
 
 impl Document {
-	#[must_use] 
+	#[must_use]
 	pub fn new() -> Self {
 		Self {
 			title: String::new(),
@@ -196,13 +196,13 @@ impl Document {
 		}
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_title(mut self, title: String) -> Self {
 		self.title = title;
 		self
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_author(mut self, author: String) -> Self {
 		self.author = author;
 		self
@@ -241,12 +241,12 @@ pub struct ParserContext {
 }
 
 impl ParserContext {
-	#[must_use] 
+	#[must_use]
 	pub const fn new(file_path: String) -> Self {
 		Self { file_path, password: None }
 	}
 
-	#[must_use] 
+	#[must_use]
 	pub fn with_password(mut self, password: String) -> Self {
 		self.password = Some(password);
 		self

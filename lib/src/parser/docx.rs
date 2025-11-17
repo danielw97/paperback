@@ -36,7 +36,7 @@ impl Parser for DocxParser {
 			.with_context(|| format!("Failed to open DOCX file '{}'", context.file_path))?;
 		let mut archive = ZipArchive::new(BufReader::new(file))
 			.with_context(|| format!("Failed to read DOCX as zip '{}'", context.file_path))?;
-		let rels = read_ooxml_relationships(&mut archive, "word/_rels/document.xml.rels")?;
+		let rels = read_ooxml_relationships(&mut archive, "word/_rels/document.xml.rels");
 		let doc_content = read_zip_entry(&mut archive, "word/document.xml")?;
 		let doc_xml = XmlDocument::parse(&doc_content).context("Failed to parse word/document.xml")?;
 		let mut buffer = DocumentBuffer::new();
@@ -237,20 +237,14 @@ fn extract_heading_text(paragraph: Node, heading_level: i32) -> String {
 		}
 		let tag_name = child.tag_name().name();
 		if tag_name == "r" {
-			let mut run_level = 0;
-			if let Some(rpr_node) = find_child_element(child, "rPr") {
-				run_level = get_run_heading_level(rpr_node);
-			}
+			let run_level = find_child_element(child, "rPr").map_or(0, get_run_heading_level);
 			if run_level == heading_level {
 				text.push_str(&collect_ooxml_run_text(child));
 			}
 		} else if tag_name == "hyperlink" {
 			for link_child in child.children() {
 				if link_child.node_type() == NodeType::Element && link_child.tag_name().name() == "r" {
-					let mut run_level = 0;
-					if let Some(rpr_node) = find_child_element(link_child, "rPr") {
-						run_level = get_run_heading_level(rpr_node);
-					}
+					let run_level = find_child_element(link_child, "rPr").map_or(0, get_run_heading_level);
 					if run_level == heading_level {
 						text.push_str(&collect_ooxml_run_text(link_child));
 					}

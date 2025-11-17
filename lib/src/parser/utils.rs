@@ -151,10 +151,7 @@ pub fn read_zip_entry(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> 
 	Ok(contents)
 }
 
-pub fn read_ooxml_relationships(
-	archive: &mut ZipArchive<BufReader<File>>,
-	rels_path: &str,
-) -> Result<HashMap<String, String>> {
+pub fn read_ooxml_relationships(archive: &mut ZipArchive<BufReader<File>>, rels_path: &str) -> HashMap<String, String> {
 	let mut rels = HashMap::new();
 	if let Ok(rels_content) = read_zip_entry(archive, rels_path) {
 		if let Ok(rels_doc) = roxmltree::Document::parse(&rels_content) {
@@ -172,7 +169,7 @@ pub fn read_ooxml_relationships(
 			}
 		}
 	}
-	Ok(rels)
+	rels
 }
 
 pub fn extract_title_from_path(path: &str) -> String {

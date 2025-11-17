@@ -67,15 +67,15 @@ impl Parser for EpubParser {
 			if !is_textual_mime(&resource_mime) {
 				continue;
 			}
-			let (content, _) = if let Some(tuple) = epub.get_resource_str(idref) { tuple } else {
-   					conversion_errors.push(idref.clone());
-   					continue;
-   				};
+			let Some((resource_content, _)) = epub.get_resource_str(idref) else {
+				conversion_errors.push(idref.clone());
+				continue;
+			};
 			let section_path = normalize_path(&resource_path);
 			let section_start = buffer.current_position();
 			let section_label = format!("Section {}", index + 1);
 			buffer.add_marker(Marker::new(MarkerType::SectionBreak, section_start).with_text(section_label));
-			match convert_section(&content) {
+			match convert_section(&resource_content) {
 				Ok(section) => {
 					for (id, relative) in section.id_positions {
 						id_positions.insert(id, section_start + relative);
@@ -216,7 +216,6 @@ fn normalize_path(path: &Path) -> String {
 				components.pop();
 			}
 			Component::Normal(part) => components.push(part.to_string_lossy().to_string()),
-			Component::CurDir => {}
 			_ => {}
 		}
 	}

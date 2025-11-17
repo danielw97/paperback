@@ -84,15 +84,15 @@ pub mod ffi {
 	}
 
 	extern "Rust" {
-		fn check_for_updates(current_version: &str, is_installer: bool) -> Result<UpdateResult>;
-		fn remove_soft_hyphens(input: &str) -> Result<String>;
-		fn url_decode(encoded: &str) -> Result<String>;
-		fn collapse_whitespace(input: &str) -> Result<String>;
-		fn trim_string(input: &str) -> Result<String>;
-		fn convert_to_utf8(input: &[u8]) -> Result<String>;
+		fn check_for_updates(current_version: &str, is_installer: bool) -> UpdateResult;
+		fn remove_soft_hyphens(input: &str) -> String;
+		fn url_decode(encoded: &str) -> String;
+		fn collapse_whitespace(input: &str) -> String;
+		fn trim_string(input: &str) -> String;
+		fn convert_to_utf8(input: &[u8]) -> String;
 		fn read_zip_entry(zip_path: &str, entry_name: &str) -> Result<String>;
 		fn find_zip_entry(zip_path: &str, entry_name: &str) -> Result<usize>;
-		fn get_available_parsers() -> Result<Vec<ParserInfo>>;
+		fn get_available_parsers() -> Vec<ParserInfo>;
 		fn parse_document(file_path: &str, password: &str) -> Result<FfiDocument>;
 		fn get_parser_for_extension(extension: &str) -> Result<String>;
 		fn convert_xml_to_text(content: &str) -> Result<FfiXmlConversion>;
@@ -109,25 +109,25 @@ use crate::{
 	xml_to_text::XmlToText,
 };
 
-fn check_for_updates(current_version: &str, is_installer: bool) -> Result<ffi::UpdateResult, String> {
+fn check_for_updates(current_version: &str, is_installer: bool) -> ffi::UpdateResult {
 	match update_module::check_for_updates(current_version, is_installer) {
 		Ok(outcome) => match outcome {
-			update_module::UpdateCheckOutcome::UpdateAvailable(result) => Ok(ffi::UpdateResult {
+			update_module::UpdateCheckOutcome::UpdateAvailable(result) => ffi::UpdateResult {
 				status: UpdateStatus::Available,
 				http_status: result.http_status,
 				latest_version: result.latest_version,
 				download_url: result.download_url,
 				release_notes: result.release_notes,
 				error_message: String::new(),
-			}),
-			update_module::UpdateCheckOutcome::UpToDate(latest_version) => Ok(ffi::UpdateResult {
+			},
+			update_module::UpdateCheckOutcome::UpToDate(latest_version) => ffi::UpdateResult {
 				status: UpdateStatus::UpToDate,
 				http_status: 0,
 				latest_version,
 				download_url: String::new(),
 				release_notes: String::new(),
 				error_message: String::new(),
-			}),
+			},
 		},
 		Err(err) => {
 			let (status, http_status) = match &err {
@@ -137,36 +137,36 @@ fn check_for_updates(current_version: &str, is_installer: bool) -> Result<ffi::U
 				update_module::UpdateError::InvalidResponse(_) => (UpdateStatus::InvalidResponse, 0),
 				update_module::UpdateError::NoDownload(_) => (UpdateStatus::NoDownload, 0),
 			};
-			Ok(ffi::UpdateResult {
+			ffi::UpdateResult {
 				status,
 				http_status,
 				latest_version: String::new(),
 				download_url: String::new(),
 				release_notes: String::new(),
 				error_message: err.to_string(),
-			})
+			}
 		}
 	}
 }
 
-fn remove_soft_hyphens(input: &str) -> Result<String, String> {
-	Ok(text::remove_soft_hyphens(input))
+fn remove_soft_hyphens(input: &str) -> String {
+	text::remove_soft_hyphens(input)
 }
 
-fn url_decode(encoded: &str) -> Result<String, String> {
-	Ok(text::url_decode(encoded))
+fn url_decode(encoded: &str) -> String {
+	text::url_decode(encoded)
 }
 
-fn collapse_whitespace(input: &str) -> Result<String, String> {
-	Ok(text::collapse_whitespace(input))
+fn collapse_whitespace(input: &str) -> String {
+	text::collapse_whitespace(input)
 }
 
-fn trim_string(input: &str) -> Result<String, String> {
-	Ok(text::trim_string(input))
+fn trim_string(input: &str) -> String {
+	text::trim_string(input)
 }
 
-fn convert_to_utf8(input: &[u8]) -> Result<String, String> {
-	Ok(encoding::convert_to_utf8(input))
+fn convert_to_utf8(input: &[u8]) -> String {
+	encoding::convert_to_utf8(input)
 }
 
 fn read_zip_entry(zip_path: &str, entry_name: &str) -> Result<String, String> {
@@ -182,12 +182,12 @@ fn find_zip_entry(zip_path: &str, entry_name: &str) -> Result<usize, String> {
 		.ok_or_else(|| format!("Entry '{entry_name}' not found in ZIP archive"))
 }
 
-fn get_available_parsers() -> Result<Vec<ffi::ParserInfo>, String> {
+fn get_available_parsers() -> Vec<ffi::ParserInfo> {
 	let parsers = parser::get_all_parsers();
-	Ok(parsers
+	parsers
 		.into_iter()
 		.map(|p| ffi::ParserInfo { name: p.name, extensions: p.extensions, flags: p.flags.bits() })
-		.collect())
+		.collect()
 }
 
 fn parse_document(file_path: &str, password: &str) -> Result<ffi::FfiDocument, String> {
@@ -239,19 +239,20 @@ fn get_parser_for_extension(extension: &str) -> Result<String, String> {
 		.ok_or_else(|| format!("No parser found for extension: .{extension}"))
 }
 
+fn flatten_recursive(items: &[TocItem], depth: i32, result: &mut Vec<ffi::FfiTocItem>) {
+	for item in items {
+		result.push(ffi::FfiTocItem {
+			name: item.name.clone(),
+			reference: item.reference.clone(),
+			offset: item.offset,
+			depth,
+		});
+		flatten_recursive(&item.children, depth + 1, result);
+	}
+}
+
 fn flatten_toc_items(items: &[TocItem]) -> Vec<ffi::FfiTocItem> {
 	let mut result = Vec::new();
-	fn flatten_recursive(items: &[TocItem], depth: i32, result: &mut Vec<ffi::FfiTocItem>) {
-		for item in items {
-			result.push(ffi::FfiTocItem {
-				name: item.name.clone(),
-				reference: item.reference.clone(),
-				offset: item.offset,
-				depth,
-			});
-			flatten_recursive(&item.children, depth + 1, result);
-		}
-	}
 	flatten_recursive(items, 0, &mut result);
 	result
 }

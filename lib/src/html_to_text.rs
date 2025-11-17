@@ -172,9 +172,9 @@ impl HtmlToText {
 
 	const fn get_bullet_for_level(level: i32) -> &'static str {
 		match level {
-			1 => "•",
 			2 => "◦",
-			3 => "-",
+			3 => "*",
+			4 => "-",
 			_ => "•",
 		}
 	}
@@ -191,7 +191,7 @@ impl HtmlToText {
 					self.link_start_pos = self.get_current_text_position();
 				}
 				if tag_name == "title" && self.title.is_empty() {
-					self.title = self.get_element_text(node, document);
+					self.title = Self::get_element_text(node, document);
 					self.title = trim_string(&collapse_whitespace(&self.title));
 				} else if tag_name == "body" {
 					self.in_body = true;
@@ -205,7 +205,7 @@ impl HtmlToText {
 				}
 				if tag_name == "li" {
 					self.finalize_current_line();
-					let li_text = self.get_element_text(node, document);
+					let li_text = Self::get_element_text(node, document);
 					self.list_items.push(ListItemInfo {
 						offset: self.get_current_text_position(),
 						level: self.list_level,
@@ -216,7 +216,8 @@ impl HtmlToText {
 					}
 					if let Some(style) = self.list_style_stack.last_mut() {
 						if style.ordered {
-							self.current_line.push_str(&format!("{}. ", style.item_number));
+							use std::fmt::Write;
+							let _ = write!(&mut self.current_line, "{}. ", style.item_number);
 							style.item_number += 1;
 						} else {
 							self.current_line.push_str(Self::get_bullet_for_level(self.list_level));
@@ -260,8 +261,9 @@ impl HtmlToText {
 								if (1..=6).contains(&level) {
 									self.finalize_current_line();
 									let heading_offset = self.get_current_text_position();
-									let heading_text = self.get_element_text(node, document);
+									let heading_text = Self::get_element_text(node, document);
 									if !heading_text.is_empty() {
+										#[allow(clippy::cast_possible_wrap)]
 										self.headings.push(HeadingInfo {
 											offset: heading_offset,
 											level: level as i32,
@@ -283,7 +285,7 @@ impl HtmlToText {
 					// In markdown mode, preserve HTML tags in code blocks.
 					for child in node.children() {
 						if let Node::Element(_) = child.value() {
-							let html_str = self.serialize_node(child, document);
+							let html_str = Self::serialize_node(child, document);
 							self.current_line.push_str(&html_str);
 						} else {
 							self.process_node(child, document);
@@ -354,26 +356,22 @@ impl HtmlToText {
 		}
 	}
 
-	fn get_element_text(&self, node: NodeRef<'_, Node>, document: &Html) -> String {
-		self.collect_text(node, document)
+	fn get_element_text(node: NodeRef<'_, Node>, _document: &Html) -> String {
+		Self::collect_text(node)
 	}
 
-	fn collect_text(&self, node: NodeRef<'_, Node>, document: &Html) -> String {
+	fn collect_text(node: NodeRef<'_, Node>) -> String {
 		match node.value() {
 			Node::Text(text) => text.text.to_string(),
-			Node::Element(_) => node.children().map(|child| self.collect_text(child, document)).collect(),
+			Node::Element(_) => node.children().map(Self::collect_text).collect(),
 			_ => String::new(),
 		}
 	}
 
-	fn serialize_node(&self, node: NodeRef<'_, Node>, _document: &Html) -> String {
+	fn serialize_node(node: NodeRef<'_, Node>, _document: &Html) -> String {
 		match node.value() {
 			Node::Element(_) => {
-				if let Some(element_ref) = scraper::ElementRef::wrap(node) {
-					element_ref.html()
-				} else {
-					String::new()
-				}
+				scraper::ElementRef::wrap(node).map_or_else(String::new, |element_ref| element_ref.html())
 			}
 			Node::Text(text) => text.text.to_string(),
 			_ => String::new(),

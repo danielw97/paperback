@@ -34,9 +34,9 @@ impl Parser for OdpParser {
 			.with_context(|| format!("Failed to open ODP file '{}'", context.file_path))?;
 		let mut archive = ZipArchive::new(BufReader::new(file))
 			.with_context(|| format!("Failed to read ODP as zip '{}'", context.file_path))?;
-		let content = read_zip_entry_by_name(&mut archive, "content.xml")
+		let content_str = read_zip_entry_by_name(&mut archive, "content.xml")
 			.context("ODP file does not contain content.xml or it is empty")?;
-		let xml_doc = XmlDocument::parse(&content).context("Invalid ODP content.xml")?;
+		let xml_doc = XmlDocument::parse(&content_str).context("Invalid ODP content.xml")?;
 		let mut buffer = DocumentBuffer::new();
 		let id_positions = HashMap::new();
 		let pages = find_all_pages(xml_doc.root());
@@ -57,9 +57,7 @@ impl Parser for OdpParser {
 				);
 				for link in links {
 					buffer.add_marker(
-						Marker::new(MarkerType::Link, link.offset)
-							.with_text(link.text)
-							.with_reference(link.reference),
+						Marker::new(MarkerType::Link, link.offset).with_text(link.text).with_reference(link.reference),
 					);
 				}
 			}
@@ -102,11 +100,7 @@ fn traverse_page(node: Node, text: &mut String, links: &mut Vec<LinkInfo>, slide
 				let link_text = collect_element_text(node);
 				if !link_text.is_empty() {
 					text.push_str(&link_text);
-					links.push(LinkInfo {
-						offset: link_offset,
-						text: link_text,
-						reference: href.to_string(),
-					});
+					links.push(LinkInfo { offset: link_offset, text: link_text, reference: href.to_string() });
 				}
 			}
 			return;
