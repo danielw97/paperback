@@ -1,5 +1,6 @@
 use std::{
 	ffi::{CStr, CString},
+	mem,
 	os::raw::{c_char, c_int, c_longlong, c_uchar, c_void},
 	path::Path,
 };
@@ -91,7 +92,7 @@ impl ChmHandle {
 	pub fn read_file(&mut self, path: &str) -> Result<Vec<u8>> {
 		let c_path = CString::new(path).context("Invalid file path")?;
 		unsafe {
-			let mut ui: ChmUnitInfo = std::mem::zeroed();
+			let mut ui: ChmUnitInfo = mem::zeroed();
 			let resolve_result = chm_resolve_object(self.handle, c_path.as_ptr(), &raw mut ui);
 			if resolve_result != CHM_RESOLVE_SUCCESS {
 				anyhow::bail!("Failed to resolve CHM object: {path}");
@@ -119,7 +120,7 @@ impl Drop for ChmHandle {
 	}
 }
 
-// Send and Sync are safe because we're the only ones with access to the handle, and CHM operations are thread-safe at the file level.
+// SAFETY: this is safe because we're the only ones with access to the handle, and CHM operations are thread-safe at the file level.
 unsafe impl Send for ChmHandle {}
 unsafe impl Sync for ChmHandle {}
 
