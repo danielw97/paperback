@@ -173,15 +173,6 @@ void speak(const wxString& message) {
 	notify_live_region_changed(label);
 }
 
-std::string url_decode(std::string_view encoded) {
-	try {
-		std::string encoded_str(encoded);
-		return std::string(::url_decode(rust::Str(encoded_str)));
-	} catch (const std::exception&) {
-		return {};
-	}
-}
-
 std::string convert_to_utf8(const std::string& input) {
 	if (input.empty()) {
 		return input;
@@ -209,56 +200,5 @@ void cleanup_toc(std::vector<std::unique_ptr<toc_item>>& items) {
 			}
 		}
 		cleanup_toc(item->children);
-	}
-}
-
-std::vector<std::unique_ptr<toc_item>> build_toc_from_headings(const document_buffer& buffer) {
-	std::vector<std::unique_ptr<toc_item>> result;
-	const auto heading_markers = buffer.get_heading_markers();
-	if (heading_markers.empty()) {
-		return result;
-	}
-	std::vector<std::vector<std::unique_ptr<toc_item>>*> level_stacks(MAX_HEADING_LEVELS + 1, nullptr);
-	level_stacks[0] = &result;
-	for (const auto* marker : heading_markers) {
-		auto item = std::make_unique<toc_item>();
-		item->name = marker->text;
-		item->offset = static_cast<int>(marker->pos);
-		const int level = marker->level;
-		if (level < 1 || level > MAX_HEADING_LEVELS) {
-			continue;
-		}
-		std::vector<std::unique_ptr<toc_item>>* parent_list = nullptr;
-		for (int i = level - 1; i >= 0; --i) {
-			if (level_stacks[i] != nullptr) {
-				parent_list = level_stacks[i];
-				break;
-			}
-		}
-		if (parent_list == nullptr) {
-			parent_list = &result;
-		}
-		parent_list->push_back(std::move(item));
-		level_stacks[level] = &parent_list->back()->children;
-		for (int i = level + 1; i < MAX_HEADING_LEVELS + 1; ++i) {
-			level_stacks[i] = nullptr;
-		}
-	}
-	return result;
-}
-
-std::string read_zip_entry(const std::string& zip_path, const std::string& entry_name) {
-	try {
-		return std::string(::read_zip_entry(rust::Str(zip_path), rust::Str(entry_name)));
-	} catch (const std::exception&) {
-		return {};
-	}
-}
-
-size_t find_zip_entry(const std::string& zip_path, const std::string& entry_name) {
-	try {
-		return ::find_zip_entry(rust::Str(zip_path), rust::Str(entry_name));
-	} catch (const std::exception&) {
-		return static_cast<size_t>(-1);
 	}
 }
