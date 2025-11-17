@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 
 use crate::{
 	chm_ffi::{CHM_ENUMERATE_ALL, ChmHandle, unit_info_path},
@@ -153,31 +153,54 @@ fn parse_hhc_file(chm: &mut ChmHandle, hhc_path: &str) -> Result<Vec<TocItem>> {
 	Ok(toc_items)
 }
 
-fn parse_hhc_node(node: scraper::ElementRef, items: &mut Vec<TocItem>) {
-	let li_selector = Selector::parse("li").unwrap();
-	let object_selector = Selector::parse("object").unwrap();
+fn parse_hhc_node(node: ElementRef, items: &mut Vec<TocItem>) {
 	let param_selector = Selector::parse("param").unwrap();
-	let ul_selector = Selector::parse("ul").unwrap();
-	for li in node.select(&li_selector) {
-		let mut name = String::new();
-		let mut local = String::new();
-		for object in li.select(&object_selector) {
-			for param in object.select(&param_selector) {
-				let param_name = param.value().attr("name").unwrap_or("").to_lowercase();
-				let param_value = param.value().attr("value").unwrap_or("");
-				match param_name.as_str() {
-					"name" => name = param_value.to_string(),
-					"local" => local = param_value.to_string(),
-					_ => {}
+	for child in node.children() {
+		let Some(child_element) = child.value().as_element() else {
+			continue;
+		};
+		let Some(child_ref) = ElementRef::wrap(child) else {
+			continue;
+		};
+		match child_element.name() {
+			"ul" => {
+				parse_hhc_node(child_ref, items);
+			}
+			"li" => {
+				let mut name = String::new();
+				let mut local = String::new();
+				for obj_child in child_ref.children() {
+					if let Some(obj_element) = obj_child.value().as_element() {
+						if obj_element.name() == "object" {
+							if let Some(object_ref) = ElementRef::wrap(obj_child) {
+								for param in object_ref.select(&param_selector) {
+									let param_name = param.value().attr("name").unwrap_or("").to_lowercase();
+									let param_value = param.value().attr("value").unwrap_or("");
+									match param_name.as_str() {
+										"name" => name = param_value.to_string(),
+										"local" => local = param_value.to_string(),
+										_ => {}
+									}
+								}
+							}
+						}
+					}
+				}
+				if !name.is_empty() {
+					let mut item = TocItem::new(name, local, usize::MAX);
+					for nested_child in child_ref.children() {
+						if let Some(nested_element) = nested_child.value().as_element() {
+							if nested_element.name() == "ul" {
+								if let Some(nested_ref) = ElementRef::wrap(nested_child) {
+									parse_hhc_node(nested_ref, &mut item.children);
+								}
+							}
+						}
+					}
+					items.push(item);
 				}
 			}
-		}
-		if !name.is_empty() {
-			let mut item = TocItem::new(name, local, usize::MAX);
-			for ul in li.select(&ul_selector) {
-				parse_hhc_node(ul, &mut item.children);
-			}
-			items.push(item);
+			_ => {}
 		}
 	}
 }

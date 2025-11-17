@@ -39,16 +39,9 @@ pub struct ChmUnitInfo {
 pub type ChmEnumerateCallback = extern "C" fn(*mut ChmFile, *mut ChmUnitInfo, *mut c_void) -> c_int;
 
 pub const CHM_ENUMERATE_ALL: c_int = 3;
-pub const CHM_ENUMERATE_NORMAL: c_int = 1;
-pub const CHM_ENUMERATE_META: c_int = 2;
-pub const CHM_ENUMERATE_SPECIAL: c_int = 0;
-pub const CHM_ENUMERATE_FILES: c_int = 4;
-pub const CHM_ENUMERATE_DIRS: c_int = 8;
 pub const CHM_ENUMERATOR_CONTINUE: c_int = 1;
 pub const CHM_ENUMERATOR_SUCCESS: c_int = 0;
-pub const CHM_ENUMERATOR_FAILURE: c_int = -1;
 pub const CHM_RESOLVE_SUCCESS: c_int = 0;
-pub const CHM_RESOLVE_FAILURE: c_int = -1;
 
 pub struct ChmHandle {
 	handle: *mut ChmFile,
