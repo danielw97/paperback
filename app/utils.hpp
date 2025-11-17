@@ -43,8 +43,5 @@ inline constexpr bool has_option(find_options options, find_options flag) noexce
 [[nodiscard]] long find_text(const wxString& haystack, const wxString& needle, long start, find_options options = find_options::forward);
 [[nodiscard]] std::string collapse_whitespace(std::string_view input);
 [[nodiscard]] std::string trim_string(const std::string& str);
-[[nodiscard]] std::string remove_soft_hyphens(std::string_view input);
 [[nodiscard]] const parser* get_parser_for_unknown_file(const wxString& path, config_manager& config);
 void speak(const wxString& message);
-[[nodiscard]] std::string convert_to_utf8(const std::string& input);
-void cleanup_toc(std::vector<std::unique_ptr<toc_item>>& items);

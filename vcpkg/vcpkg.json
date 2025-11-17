@@ -3,7 +3,6 @@
 	"version": "0.6",
 	"dependencies": [
 		"chmlib",
-		"lexbor",
 		"mbedtls",
 		"pdfium",
 		"wxwidgets"

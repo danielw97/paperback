@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use crate::document::{Document, ParserContext, ParserFlags};
 
+pub mod chm;
 pub mod docx;
 pub mod epub;
 pub mod fb2;
@@ -75,6 +76,7 @@ impl ParserRegistry {
 		static REGISTRY: OnceLock<ParserRegistry> = OnceLock::new();
 		REGISTRY.get_or_init(|| {
 			let mut registry = Self::new();
+			registry.register(chm::ChmParser);
 			registry.register(docx::DocxParser);
 			registry.register(epub::EpubParser);
 			registry.register(fb2::Fb2Parser);

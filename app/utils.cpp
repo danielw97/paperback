@@ -134,15 +134,6 @@ std::string trim_string(const std::string& str) {
 	}
 }
 
-std::string remove_soft_hyphens(std::string_view input) {
-	try {
-		std::string input_str(input);
-		return std::string(::remove_soft_hyphens(rust::Str(input_str)));
-	} catch (const std::exception&) {
-		return {};
-	}
-}
-
 const parser* get_parser_for_unknown_file(const wxString& path, config_manager& config) {
 	const wxString saved_format = config.get_document_format(path);
 	if (!saved_format.IsEmpty()) {
@@ -171,34 +162,4 @@ void speak(const wxString& message) {
 	}
 	label->SetLabel(message);
 	notify_live_region_changed(label);
-}
-
-std::string convert_to_utf8(const std::string& input) {
-	if (input.empty()) {
-		return input;
-	}
-	try {
-		rust::Slice<const uint8_t> slice(reinterpret_cast<const uint8_t*>(input.data()), input.length());
-		return std::string(::convert_to_utf8(slice));
-	} catch (const std::exception&) {
-		return input;
-	}
-}
-
-void cleanup_toc(std::vector<std::unique_ptr<toc_item>>& items) {
-	for (auto& item : items) {
-		if (!item->children.empty()) {
-			auto& first_child = item->children[0];
-			if (item->name.CmpNoCase(first_child->name) == 0 && (item->ref == first_child->ref || item->ref.IsEmpty())) {
-				if (item->ref.IsEmpty() && !first_child->ref.IsEmpty()) {
-					item->ref = first_child->ref;
-					item->offset = first_child->offset;
-				}
-				auto grandchildren = std::move(first_child->children);
-				item->children.erase(item->children.begin());
-				item->children.insert(item->children.begin(), std::make_move_iterator(grandchildren.begin()), std::make_move_iterator(grandchildren.end()));
-			}
-		}
-		cleanup_toc(item->children);
-	}
 }

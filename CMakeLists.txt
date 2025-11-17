@@ -30,7 +30,6 @@ endif()
 
 find_package(chmlib CONFIG REQUIRED)
 find_package(Gettext)
-find_package(lexbor CONFIG REQUIRED)
 find_package(MbedTLS CONFIG REQUIRED)
 find_package(pdfium CONFIG REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
@@ -141,7 +140,6 @@ target_include_directories(paperback PRIVATE
 target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
 	chmlib::chm
-	lexbor::lexbor
 	MbedTLS::mbedcrypto
 	pdfium::pdfium
 	wx::base
