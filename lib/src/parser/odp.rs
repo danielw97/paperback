@@ -6,6 +6,7 @@ use zip::ZipArchive;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags},
+	html_to_text::LinkInfo,
 	parser::{
 		Parser,
 		utils::{collect_element_text, extract_title_from_path},
@@ -44,7 +45,8 @@ impl Parser for OdpParser {
 		}
 		for (index, page_node) in pages.iter().enumerate() {
 			let slide_start = buffer.current_position();
-			let slide_text = get_page_text(*page_node, &buffer);
+			let mut links = Vec::new();
+			let slide_text = get_page_text(*page_node, &mut links, slide_start);
 			if !slide_text.trim().is_empty() {
 				buffer.append(&slide_text);
 				if !buffer.content.ends_with('\n') {
@@ -53,6 +55,13 @@ impl Parser for OdpParser {
 				buffer.add_marker(
 					Marker::new(MarkerType::PageBreak, slide_start).with_text(format!("Slide {}", index + 1)),
 				);
+				for link in links {
+					buffer.add_marker(
+						Marker::new(MarkerType::Link, link.offset)
+							.with_text(link.text)
+							.with_reference(link.reference),
+					);
+				}
 			}
 		}
 		let title = extract_title_from_path(&context.file_path);
@@ -78,29 +87,32 @@ fn collect_pages<'a, 'input>(node: Node<'a, 'input>, pages: &mut Vec<Node<'a, 'i
 	}
 }
 
-fn get_page_text(page_node: Node, buffer: &DocumentBuffer) -> String {
+fn get_page_text(page_node: Node, links: &mut Vec<LinkInfo>, slide_start: usize) -> String {
 	let mut text = String::new();
-	traverse_page(page_node, &mut text, buffer);
+	traverse_page(page_node, &mut text, links, slide_start);
 	text
 }
 
-fn traverse_page(node: Node, text: &mut String, buffer: &DocumentBuffer) {
+fn traverse_page(node: Node, text: &mut String, links: &mut Vec<LinkInfo>, slide_start: usize) {
 	if node.node_type() == NodeType::Element {
 		let tag_name = node.tag_name().name();
 		if tag_name == "a" {
 			if let Some(href) = node.attribute("href") {
-				let link_start = buffer.current_position() + text.len();
+				let link_offset = slide_start + text.len();
 				let link_text = collect_element_text(node);
 				if !link_text.is_empty() {
 					text.push_str(&link_text);
-					// Note: We can't add links directly here since we need mutable buffer
-					// Links would need to be collected and added after, but for now we just add the text
+					links.push(LinkInfo {
+						offset: link_offset,
+						text: link_text,
+						reference: href.to_string(),
+					});
 				}
 			}
 			return;
 		}
 		if tag_name == "p" || tag_name == "span" {
-			traverse_children(node, text, buffer);
+			traverse_children(node, text, links, slide_start);
 			if tag_name == "p" && !text.ends_with('\n') {
 				text.push('\n');
 			}
@@ -112,11 +124,11 @@ fn traverse_page(node: Node, text: &mut String, buffer: &DocumentBuffer) {
 		}
 		return;
 	}
-	traverse_children(node, text, buffer);
+	traverse_children(node, text, links, slide_start);
 }
 
-fn traverse_children(node: Node, text: &mut String, buffer: &DocumentBuffer) {
+fn traverse_children(node: Node, text: &mut String, links: &mut Vec<LinkInfo>, slide_start: usize) {
 	for child in node.children() {
-		traverse_page(child, text, buffer);
+		traverse_page(child, text, links, slide_start);
 	}
 }

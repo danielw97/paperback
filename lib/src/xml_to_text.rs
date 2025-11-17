@@ -120,19 +120,18 @@ impl XmlToText {
 					self.section_offsets.push(self.get_current_text_position());
 				}
 				if tag_name == "a" {
-					if let Some(link_text) = self.get_element_text(node) {
-						if !link_text.is_empty() {
-							let href = node.attribute("href").unwrap_or("").to_string();
-							let processed_link_text = collapse_whitespace(&link_text);
-							let link_offset = self.get_current_text_position();
-							self.current_line.push_str(&processed_link_text);
-							self.links.push(LinkInfo {
-								offset: link_offset,
-								text: processed_link_text,
-								reference: href,
-							});
-							skip_children = true;
-						}
+					let link_text = self.get_element_text(node);
+					if !link_text.is_empty() {
+						let href = node.attribute("href").unwrap_or("").to_string();
+						let processed_link_text = collapse_whitespace(&link_text);
+						let link_offset = self.get_current_text_position();
+						self.current_line.push_str(&processed_link_text);
+						self.links.push(LinkInfo {
+							offset: link_offset,
+							text: processed_link_text,
+							reference: href,
+						});
+						skip_children = true;
 					}
 				} else if tag_name == "body" {
 					self.in_body = true;
@@ -143,7 +142,7 @@ impl XmlToText {
 					self.finalize_current_line();
 				} else if tag_name == "li" {
 					self.finalize_current_line();
-					let li_text = self.get_element_text(node).unwrap_or_default();
+					let li_text = self.get_element_text(node);
 					self.list_items.push(ListItemInfo {
 						offset: self.get_current_text_position(),
 						level: self.list_level,
@@ -195,16 +194,15 @@ impl XmlToText {
 					if (1..=6).contains(&level) {
 						self.finalize_current_line();
 						let heading_offset = self.get_current_text_position();
-						if let Some(text) = self.get_element_text(node) {
-							if !text.is_empty() {
-								let normalized = trim_string(&collapse_whitespace(&text));
-								if !normalized.is_empty() {
-									self.headings.push(HeadingInfo {
-										offset: heading_offset,
-										level: i32::from(level),
-										text: normalized,
-									});
-								}
+						let text = self.get_element_text(node);
+						if !text.is_empty() {
+							let normalized = trim_string(&collapse_whitespace(&text));
+							if !normalized.is_empty() {
+								self.headings.push(HeadingInfo {
+									offset: heading_offset,
+									level: i32::from(level),
+									text: normalized,
+								});
 							}
 						}
 					}
@@ -278,25 +276,15 @@ impl XmlToText {
 		self.cached_char_length + display_len(trimmed)
 	}
 
-	fn get_element_text(&self, node: Node<'_, '_>) -> Option<String> {
-		let mut buffer = String::new();
-		self.collect_text(node, &mut buffer);
-		Some(buffer)
+	fn get_element_text(&self, node: Node<'_, '_>) -> String {
+		self.collect_text(node)
 	}
 
-	fn collect_text(&self, node: Node<'_, '_>, buffer: &mut String) {
+	fn collect_text(&self, node: Node<'_, '_>) -> String {
 		match node.node_type() {
-			NodeType::Text => {
-				if let Some(text) = node.text() {
-					buffer.push_str(text);
-				}
-			}
-			NodeType::Element => {
-				for child in node.children() {
-					self.collect_text(child, buffer);
-				}
-			}
-			_ => {}
+			NodeType::Text => node.text().unwrap_or("").to_string(),
+			NodeType::Element => node.children().map(|child| self.collect_text(child)).collect(),
+			_ => String::new(),
 		}
 	}
 

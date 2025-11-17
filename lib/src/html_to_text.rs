@@ -297,12 +297,13 @@ impl HtmlToText {
 				if tag_name == "a" && self.in_link {
 					self.in_link = false;
 					if !self.current_link_text.is_empty() {
+						let collapsed_text = collapse_whitespace(&self.current_link_text);
 						self.links.push(LinkInfo {
 							offset: self.link_start_pos,
-							text: collapse_whitespace(&self.current_link_text),
+							text: collapsed_text.clone(),
 							reference: self.current_link_href.clone(),
 						});
-						self.current_line.push_str(&self.current_link_text);
+						self.current_line.push_str(&collapsed_text);
 					}
 					self.current_link_href.clear();
 					self.current_link_text.clear();
@@ -354,54 +355,25 @@ impl HtmlToText {
 	}
 
 	fn get_element_text(&self, node: NodeRef<'_, Node>, document: &Html) -> String {
-		let mut text = String::new();
-		self.collect_text(node, document, &mut text);
-		text
+		self.collect_text(node, document)
 	}
 
-	fn collect_text(&self, node: NodeRef<'_, Node>, document: &Html, buffer: &mut String) {
+	fn collect_text(&self, node: NodeRef<'_, Node>, document: &Html) -> String {
 		match node.value() {
-			Node::Text(text) => {
-				buffer.push_str(&text.text);
-			}
-			Node::Element(_) => {
-				for child in node.children() {
-					self.collect_text(child, document, buffer);
-				}
-			}
-			_ => {}
+			Node::Text(text) => text.text.to_string(),
+			Node::Element(_) => node.children().map(|child| self.collect_text(child, document)).collect(),
+			_ => String::new(),
 		}
 	}
 
-	fn serialize_node(&self, node: NodeRef<'_, Node>, document: &Html) -> String {
-		// This is a simplified serialization - for production you might want to use html5ever's serializer
+	fn serialize_node(&self, node: NodeRef<'_, Node>, _document: &Html) -> String {
 		match node.value() {
-			Node::Element(element) => {
-				let mut result = String::new();
-				result.push('<');
-				result.push_str(element.name());
-
-				// Add attributes
-				for (name, value) in element.attrs() {
-					result.push(' ');
-					result.push_str(name);
-					result.push_str("=\"");
-					result.push_str(value);
-					result.push('"');
+			Node::Element(_) => {
+				if let Some(element_ref) = scraper::ElementRef::wrap(node) {
+					element_ref.html()
+				} else {
+					String::new()
 				}
-				result.push('>');
-
-				// Add children
-				for child in node.children() {
-					result.push_str(&self.serialize_node(child, document));
-				}
-
-				// Closing tag
-				result.push_str("</");
-				result.push_str(element.name());
-				result.push('>');
-
-				result
 			}
 			Node::Text(text) => text.text.to_string(),
 			_ => String::new(),

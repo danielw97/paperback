@@ -6,6 +6,7 @@ use zip::ZipArchive;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
+	html_to_text::LinkInfo,
 	parser::{
 		Parser,
 		utils::{collect_text_from_tagged_elements, extract_title_from_path, read_ooxml_relationships, read_zip_entry},
@@ -57,7 +58,8 @@ impl Parser for PptxParser {
 			let rels = read_ooxml_relationships(&mut archive, &rels_name)?;
 			let slide_title = extract_slide_title(slide_doc.root());
 			let slide_start = buffer.current_position();
-			let slide_text = extract_slide_text(slide_doc.root(), &buffer, &rels);
+			let mut links = Vec::new();
+			let slide_text = extract_slide_text(slide_doc.root(), &mut links, slide_start, &rels);
 			if !slide_text.trim().is_empty() {
 				buffer.append(&slide_text);
 				if !buffer.content.ends_with('\n') {
@@ -69,6 +71,13 @@ impl Parser for PptxParser {
 				buffer.add_marker(
 					Marker::new(MarkerType::PageBreak, slide_start).with_text(format!("Slide {}", index + 1)),
 				);
+				for link in links {
+					buffer.add_marker(
+						Marker::new(MarkerType::Link, link.offset)
+							.with_text(link.text)
+							.with_reference(link.reference),
+					);
+				}
 				let toc_name =
 					if slide_title.is_empty() { format!("Slide {}", index + 1) } else { slide_title.clone() };
 				toc_items.push(TocItem::new(toc_name, String::new(), slide_start));
@@ -112,13 +121,24 @@ fn is_title_shape(node: Node) -> bool {
 	false
 }
 
-fn extract_slide_text(root: Node, buffer: &DocumentBuffer, rels: &HashMap<String, String>) -> String {
+fn extract_slide_text(
+	root: Node,
+	links: &mut Vec<LinkInfo>,
+	slide_start: usize,
+	rels: &HashMap<String, String>,
+) -> String {
 	let mut text = String::new();
-	traverse_for_text(root, &mut text, buffer, rels);
+	traverse_for_text(root, &mut text, links, slide_start, rels);
 	text
 }
 
-fn traverse_for_text(node: Node, text: &mut String, buffer: &DocumentBuffer, rels: &HashMap<String, String>) {
+fn traverse_for_text(
+	node: Node,
+	text: &mut String,
+	links: &mut Vec<LinkInfo>,
+	slide_start: usize,
+	rels: &HashMap<String, String>,
+) {
 	if node.node_type() == NodeType::Element {
 		let tag_name = node.tag_name().name();
 		if tag_name == "t" {
@@ -133,7 +153,7 @@ fn traverse_for_text(node: Node, text: &mut String, buffer: &DocumentBuffer, rel
 		}
 		if tag_name == "p" {
 			for child in node.children() {
-				traverse_for_text(child, text, buffer, rels);
+				traverse_for_text(child, text, links, slide_start, rels);
 			}
 			if !text.ends_with('\n') {
 				text.push('\n');
@@ -146,10 +166,13 @@ fn traverse_for_text(node: Node, text: &mut String, buffer: &DocumentBuffer, rel
 					if let Some(parent) = node.parent() {
 						let link_text = collect_text_from_tagged_elements(parent, "t");
 						if !link_text.is_empty() {
-							let link_start = buffer.current_position() + text.len();
+							let link_offset = slide_start + text.len();
 							text.push_str(&link_text);
-							// Note: We can't add links here since we need mutable buffer
-							// In a full implementation, we'd need to collect links and add them after
+							links.push(LinkInfo {
+								offset: link_offset,
+								text: link_text,
+								reference: link_target.clone(),
+							});
 						}
 					}
 				}
@@ -160,7 +183,7 @@ fn traverse_for_text(node: Node, text: &mut String, buffer: &DocumentBuffer, rel
 		return;
 	}
 	for child in node.children() {
-		traverse_for_text(child, text, buffer, rels);
+		traverse_for_text(child, text, links, slide_start, rels);
 	}
 }
 
