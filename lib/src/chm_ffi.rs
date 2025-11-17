@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result};
 
-unsafe extern "C" {
+unsafe extern {
 	fn chm_open(filename: *const c_char) -> *mut ChmFile;
 	fn chm_close(file: *mut ChmFile);
 	fn chm_enumerate(file: *mut ChmFile, what: c_int, callback: ChmEnumerateCallback, context: *mut c_void) -> c_int;
@@ -35,7 +35,7 @@ pub struct ChmUnitInfo {
 	pub path: [c_char; 512],
 }
 
-pub type ChmEnumerateCallback = extern "C" fn(*mut ChmFile, *mut ChmUnitInfo, *mut c_void) -> c_int;
+pub type ChmEnumerateCallback = extern fn(*mut ChmFile, *mut ChmUnitInfo, *mut c_void) -> c_int;
 
 pub const CHM_ENUMERATE_ALL: c_int = 3;
 pub const CHM_ENUMERATE_NORMAL: c_int = 1;
@@ -71,7 +71,7 @@ impl ChmHandle {
 	where
 		F: FnMut(&ChmUnitInfo) -> bool,
 	{
-		extern "C" fn trampoline<F>(_file: *mut ChmFile, ui: *mut ChmUnitInfo, context: *mut c_void) -> c_int
+		extern fn trampoline<F>(_file: *mut ChmFile, ui: *mut ChmUnitInfo, context: *mut c_void) -> c_int
 		where
 			F: FnMut(&ChmUnitInfo) -> bool,
 		{
