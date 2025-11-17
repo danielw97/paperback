@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use roxmltree::{Document, Node, NodeType};
+use roxmltree::{Document, Node, NodeType, ParsingOptions};
 
 use crate::{
 	html_to_text::{HeadingInfo, LinkInfo, ListInfo, ListItemInfo},
@@ -38,7 +38,8 @@ impl XmlToText {
 
 	pub fn convert(&mut self, xml_content: &str) -> bool {
 		self.clear();
-		let Ok(doc) = Document::parse(xml_content) else {
+		let options = ParsingOptions { allow_dtd: true, ..ParsingOptions::default() };
+		let Ok(doc) = Document::parse_with_options(xml_content, options) else {
 			return false;
 		};
 		for child in doc.root().children() {

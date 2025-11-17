@@ -128,7 +128,7 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn test_registry_has_parsers() {
+	fn registry_has_parsers() {
 		let parsers = get_all_parsers();
 		assert!(!parsers.is_empty(), "Registry should have parsers");
 	}

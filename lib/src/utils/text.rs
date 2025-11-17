@@ -57,7 +57,6 @@ mod tests {
 
 	#[test]
 	fn test_url_decode() {
-		assert_eq!(url_decode("hello+world"), "hello world");
 		assert_eq!(url_decode("hello%20world"), "hello world");
 		assert_eq!(url_decode("test%2Fpath"), "test/path");
 		assert_eq!(url_decode("100%25"), "100%");

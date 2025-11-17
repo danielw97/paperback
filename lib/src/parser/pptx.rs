@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 use anyhow::{Context, Result};
 use roxmltree::{Document as XmlDocument, Node, NodeType};
@@ -38,7 +38,7 @@ impl Parser for PptxParser {
 			if let Ok(entry) = archive.by_index(i) {
 				let name = entry.name().to_string();
 				if name.starts_with("ppt/slides/slide")
-					&& std::path::Path::new(&name).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("xml"))
+					&& Path::new(&name).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("xml"))
 					&& !name.contains("_rels")
 				{
 					slides.push(name);
