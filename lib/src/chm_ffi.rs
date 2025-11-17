@@ -84,7 +84,7 @@ impl ChmHandle {
 		unsafe {
 			let context: *mut c_void = &mut callback as *mut F as *mut c_void;
 			let result = chm_enumerate(self.handle, what, trampoline::<F>, context);
-			if result == 0 { Ok(()) } else { anyhow::bail!("CHM enumeration failed with code {}", result) }
+			if result != 0 { Ok(()) } else { anyhow::bail!("CHM enumeration failed") }
 		}
 	}
 
