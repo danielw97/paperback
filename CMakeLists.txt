@@ -28,7 +28,6 @@ if(CLANG_TIDY_EXE)
 	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/app/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
 endif()
 
-find_package(chmlib CONFIG REQUIRED)
 find_package(Gettext)
 find_package(MbedTLS CONFIG REQUIRED)
 find_package(pdfium CONFIG REQUIRED)
@@ -113,7 +112,6 @@ add_dependencies(paperback libpaperback_rust)
 target_include_directories(paperback PRIVATE ${CMAKE_SOURCE_DIR}/app ${CMAKE_SOURCE_DIR} ${RUST_TARGET_DIR}/cxxbridge)
 target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
-	chmlib::chm
 	MbedTLS::mbedcrypto
 	pdfium::pdfium
 	wx::base

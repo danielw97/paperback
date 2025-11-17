@@ -26,8 +26,12 @@ serde_json = "1.0.145"
 zip = { version = "6.0.0", default-features = false, features = ["deflate", "bzip2"] }
 
 [build-dependencies]
+bzip2 = "0.6.1"
+cc = "1.2.46"
 cxx = "1.0.188"
 cxx-build = "1.0"
+reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "rustls-tls"] }
+tar = "0.4.44"
 
 [profile.release]
 strip = true
