@@ -41,7 +41,6 @@ jobs:
       with:
         msystem: UCRT64
         update: true
-        add-to-path: false
         install: >-
           gettext
           mingw-w64-ucrt-x86_64-gettext-tools
