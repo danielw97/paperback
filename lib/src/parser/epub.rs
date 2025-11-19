@@ -1,10 +1,12 @@
 use std::{
 	collections::HashMap,
+	io::{Read, Seek},
 	path::{Component, Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
 use epub::doc::{EpubDoc, NavPoint};
+use roxmltree::{Document as XmlDocument, Node, NodeType, ParsingOptions};
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
@@ -13,7 +15,7 @@ use crate::{
 		Parser,
 		utils::{extract_title_from_path, heading_level_to_marker_type},
 	},
-	utils::text::trim_string,
+	utils::text::{collapse_whitespace, trim_string},
 	xml_to_text::XmlToText,
 };
 
@@ -134,7 +136,7 @@ impl Parser for EpubParser {
 			.unwrap_or_else(|| extract_title_from_path(&context.file_path));
 		let author =
 			epub.mdata("creator").map(|item| trim_string(&item.value)).filter(|s| !s.is_empty()).unwrap_or_default();
-		let toc_items = build_toc(&epub.toc, &sections, &id_positions);
+		let toc_items = build_toc_items(&mut epub, &sections, &id_positions);
 		let mut document = Document::new().with_title(title).with_author(author);
 		document.set_buffer(buffer);
 		document.id_positions = id_positions;
@@ -222,7 +224,20 @@ fn normalize_path(path: &Path) -> String {
 	components.join("/")
 }
 
-fn build_toc(navpoints: &[NavPoint], sections: &[SectionMeta], id_positions: &HashMap<String, usize>) -> Vec<TocItem> {
+fn build_toc_items<R: Read + Seek>(
+	epub: &mut EpubDoc<R>,
+	sections: &[SectionMeta],
+	id_positions: &HashMap<String, usize>,
+) -> Vec<TocItem> {
+	build_toc_from_nav_document(epub, sections, id_positions)
+		.unwrap_or_else(|| build_toc_from_navpoints(&epub.toc, sections, id_positions))
+}
+
+fn build_toc_from_navpoints(
+	navpoints: &[NavPoint],
+	sections: &[SectionMeta],
+	id_positions: &HashMap<String, usize>,
+) -> Vec<TocItem> {
 	navpoints.iter().map(|nav| convert_navpoint(nav, sections, id_positions)).collect()
 }
 
@@ -252,6 +267,139 @@ fn compute_navpoint_offset(reference: &str, sections: &[SectionMeta], id_positio
 		}
 	}
 	0
+}
+
+fn build_toc_from_nav_document<R: Read + Seek>(
+	epub: &mut EpubDoc<R>,
+	sections: &[SectionMeta],
+	id_positions: &HashMap<String, usize>,
+) -> Option<Vec<TocItem>> {
+	let nav_id = epub.get_nav_id()?;
+	let nav_resource = epub.resources.get(&nav_id)?;
+	let nav_path = normalize_path(&nav_resource.path);
+	let (nav_bytes, _) = epub.get_resource(&nav_id)?;
+	let nav_content = String::from_utf8_lossy(&nav_bytes).into_owned();
+	let parse_options = ParsingOptions { allow_dtd: true, ..ParsingOptions::default() };
+	let document = XmlDocument::parse_with_options(&nav_content, parse_options).ok()?;
+	let nav_node = find_toc_nav(&document)?;
+	let mut items = Vec::new();
+	for child in nav_node.children() {
+		if child.node_type() != NodeType::Element {
+			continue;
+		}
+		match child.tag_name().name() {
+			"ol" | "ul" => items.extend(parse_nav_list(child, &nav_path, sections, id_positions)),
+			"li" => {
+				if let Some(item) = parse_nav_item(child, &nav_path, sections, id_positions) {
+					items.push(item);
+				}
+			}
+			_ => {}
+		}
+	}
+	if items.is_empty() {
+		items = parse_nav_list(nav_node, &nav_path, sections, id_positions);
+	}
+	if items.is_empty() { None } else { Some(items) }
+}
+
+fn find_toc_nav<'a>(document: &'a XmlDocument<'a>) -> Option<Node<'a, 'a>> {
+	document.descendants().find(|node| {
+		if node.node_type() != NodeType::Element || node.tag_name().name() != "nav" {
+			return false;
+		}
+		for attr in node.attributes() {
+			let attr_name = attr.name();
+			let matches_name = attr_name.eq_ignore_ascii_case("epub:type")
+				|| attr_name.eq_ignore_ascii_case("type")
+				|| attr_name.eq_ignore_ascii_case("role");
+			if !matches_name {
+				continue;
+			}
+			if attr
+				.value()
+				.split_ascii_whitespace()
+				.any(|part| part.eq_ignore_ascii_case("toc") || part.eq_ignore_ascii_case("doc-toc"))
+			{
+				return true;
+			}
+		}
+		false
+	})
+}
+
+fn parse_nav_list(
+	list_node: Node<'_, '_>,
+	current_path: &str,
+	sections: &[SectionMeta],
+	id_positions: &HashMap<String, usize>,
+) -> Vec<TocItem> {
+	let mut items = Vec::new();
+	for child in list_node.children() {
+		if child.node_type() != NodeType::Element {
+			continue;
+		}
+		if child.tag_name().name() != "li" {
+			continue;
+		}
+		if let Some(item) = parse_nav_item(child, current_path, sections, id_positions) {
+			items.push(item);
+		}
+	}
+	items
+}
+
+fn parse_nav_item(
+	item_node: Node<'_, '_>,
+	current_path: &str,
+	sections: &[SectionMeta],
+	id_positions: &HashMap<String, usize>,
+) -> Option<TocItem> {
+	let link_node = item_node
+		.children()
+		.find(|child| child.node_type() == NodeType::Element && child.tag_name().name() == "a")
+		.or_else(|| {
+			item_node.descendants().find(|desc| desc.node_type() == NodeType::Element && desc.tag_name().name() == "a")
+		})?;
+	let href = link_node.attribute("href").or_else(|| link_node.attribute(("http://www.w3.org/1999/xlink", "href")))?;
+	let text = extract_link_text(link_node);
+	if text.is_empty() {
+		return None;
+	}
+	let reference = resolve_href(current_path, href);
+	let offset = compute_navpoint_offset(&reference, sections, id_positions);
+	let mut item = TocItem::new(text, reference, offset);
+	for child in item_node.children() {
+		if child.node_type() != NodeType::Element {
+			continue;
+		}
+		if child.tag_name().name() == "ol" || child.tag_name().name() == "ul" {
+			item.children.extend(parse_nav_list(child, current_path, sections, id_positions));
+		}
+	}
+	Some(item)
+}
+
+fn extract_link_text(link: Node<'_, '_>) -> String {
+	let mut text = String::new();
+	collect_text(link, &mut text);
+	trim_string(&collapse_whitespace(&text))
+}
+
+fn collect_text(node: Node<'_, '_>, buffer: &mut String) {
+	match node.node_type() {
+		NodeType::Text => {
+			if let Some(value) = node.text() {
+				buffer.push_str(value);
+			}
+		}
+		NodeType::Element => {
+			for child in node.children() {
+				collect_text(child, buffer);
+			}
+		}
+		_ => {}
+	}
 }
 
 fn is_textual_mime(mime: &str) -> bool {
