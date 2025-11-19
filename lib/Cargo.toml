@@ -30,6 +30,7 @@ bzip2 = "0.6.1"
 cc = "1.2.46"
 cxx = "1.0.188"
 cxx-build = "1.0"
+flate2 = "1.0.34"
 reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "rustls-tls"] }
 tar = "0.4.44"
 

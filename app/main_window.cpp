@@ -586,11 +586,11 @@ void main_window::on_go_forward(wxCommandEvent&) {
 
 void main_window::on_go_to_page(wxCommandEvent&) {
 	auto* const doc = doc_manager->get_active_document();
-	const auto* const par = doc_manager->get_active_parser();
-	if (doc == nullptr || par == nullptr) {
+	const auto* const parser = doc_manager->get_active_parser();
+	if (doc == nullptr || parser == nullptr) {
 		return;
 	}
-	if (!par->has_flag(parser_flags::supports_pages)) {
+	if (!parser_supports(parser->flags, parser_flags::supports_pages)) {
 		speak(_("No pages."));
 		return;
 	}
@@ -604,7 +604,7 @@ void main_window::on_go_to_page(wxCommandEvent&) {
 	if (current_page_idx >= 0) {
 		current_page = current_page_idx + 1; // Convert to 1-based index
 	}
-	go_to_page_dialog dlg(this, doc, par, current_page);
+	go_to_page_dialog dlg(this, doc, parser, current_page);
 	if (dlg.ShowModal() != wxID_OK) {
 		return;
 	}

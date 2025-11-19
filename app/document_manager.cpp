@@ -65,14 +65,14 @@ bool document_manager::open_file(const wxString& path, bool add_to_recent) {
 		}
 		return true;
 	}
-	const auto* par = find_parser_by_extension(wxFileName(path).GetExt());
-	if (par == nullptr) {
-		par = get_parser_for_unknown_file(path, config);
-		if (par == nullptr) {
+	const parser_info* parser = find_parser_by_extension(wxFileName(path).GetExt());
+	if (parser == nullptr) {
+		parser = get_parser_for_unknown_file(path, config);
+		if (parser == nullptr) {
 			return false;
 		}
 	}
-	if (!create_document_tab(path, par, true, add_to_recent)) {
+	if (!create_document_tab(path, parser, true, add_to_recent)) {
 		return false;
 	}
 	auto* const text_ctrl = get_active_text_ctrl();
@@ -84,18 +84,16 @@ bool document_manager::open_file(const wxString& path, bool add_to_recent) {
 	return true;
 }
 
-bool document_manager::create_document_tab(const wxString& path, const parser* par, bool set_focus, bool add_to_recent) {
+bool document_manager::create_document_tab(const wxString& path, const parser_info* parser, bool set_focus, bool add_to_recent) {
+	if (parser == nullptr) {
+		return false;
+	}
 	config.import_document_settings(path);
 	std::unique_ptr<document> doc;
 	wxString password_in_use;
 	const wxString saved_password = config.get_document_password(path);
 	auto load_document = [&](const std::optional<std::string>& password) {
-		parser_context ctx;
-		ctx.file_path = path;
-		if (password.has_value()) {
-			ctx.password = password;
-		}
-		return par->load(ctx);
+		return load_document_from_rust(path, password);
 	};
 	try {
 		std::optional<std::string> initial_password;
@@ -141,7 +139,7 @@ bool document_manager::create_document_tab(const wxString& path, const parser* p
 	auto* tab_data = new document_tab;
 	tab_data->doc = std::move(doc);
 	tab_data->file_path = path;
-	tab_data->parser = par;
+	tab_data->parser = parser;
 	wxPanel* panel = create_tab_panel(tab_data->doc->buffer.str(), tab_data);
 	tab_data->panel = panel;
 	notebook->AddPage(panel, tab_data->doc->title, true);
@@ -229,7 +227,7 @@ wxTextCtrl* document_manager::get_active_text_ctrl() const {
 	return tab != nullptr ? tab->text_ctrl : nullptr;
 }
 
-const parser* document_manager::get_active_parser() const {
+const parser_info* document_manager::get_active_parser() const {
 	const document_tab* tab = get_active_tab();
 	return tab != nullptr ? tab->parser : nullptr;
 }
@@ -256,11 +254,11 @@ void document_manager::go_to_position(int position) const {
 void document_manager::navigate_to_section(bool next) const {
 	const document* doc = get_active_document();
 	wxTextCtrl* text_ctrl = get_active_text_ctrl();
-	const parser* par = get_active_parser();
-	if (doc == nullptr || text_ctrl == nullptr || par == nullptr) {
+	const parser_info* parser = get_active_parser();
+	if (doc == nullptr || text_ctrl == nullptr || parser == nullptr) {
 		return;
 	}
-	if (!par->has_flag(parser_flags::supports_sections)) {
+	if (!parser_supports(parser->flags, parser_flags::supports_sections)) {
 		speak(_("No sections."));
 		return;
 	}
@@ -761,11 +759,11 @@ void document_manager::activate_current_link() const {
 void document_manager::navigate_to_list(bool next) const {
 	const document* doc = get_active_document();
 	wxTextCtrl* text_ctrl = get_active_text_ctrl();
-	const parser* par = get_active_parser();
-	if (doc == nullptr || text_ctrl == nullptr || par == nullptr) {
+	const parser_info* parser = get_active_parser();
+	if (doc == nullptr || text_ctrl == nullptr || parser == nullptr) {
 		return;
 	}
-	if (!par->has_flag(parser_flags::supports_lists)) {
+	if (!parser_supports(parser->flags, parser_flags::supports_lists)) {
 		speak(_("No lists."));
 		return;
 	}
@@ -820,11 +818,11 @@ void document_manager::go_to_next_list() const {
 void document_manager::navigate_to_list_item(bool next) const {
 	const document* doc = get_active_document();
 	wxTextCtrl* text_ctrl = get_active_text_ctrl();
-	const parser* par = get_active_parser();
-	if (doc == nullptr || text_ctrl == nullptr || par == nullptr) {
+	const parser_info* parser = get_active_parser();
+	if (doc == nullptr || text_ctrl == nullptr || parser == nullptr) {
 		return;
 	}
-	if (!par->has_flag(parser_flags::supports_lists)) {
+	if (!parser_supports(parser->flags, parser_flags::supports_lists)) {
 		speak(_("No lists."));
 		return;
 	}
@@ -1012,11 +1010,11 @@ void document_manager::show_bookmark_dialog(wxWindow* parent, bookmark_filter in
 void document_manager::show_table_of_contents(wxWindow* parent) const {
 	const document* doc = get_active_document();
 	wxTextCtrl* text_ctrl = get_active_text_ctrl();
-	const parser* par = get_active_parser();
-	if (doc == nullptr || text_ctrl == nullptr || par == nullptr) {
+	const parser_info* parser = get_active_parser();
+	if (doc == nullptr || text_ctrl == nullptr || parser == nullptr) {
 		return;
 	}
-	if (!par->has_flag(parser_flags::supports_toc)) {
+	if (!parser_supports(parser->flags, parser_flags::supports_toc)) {
 		speak(_("No table of contents."));
 		return;
 	}

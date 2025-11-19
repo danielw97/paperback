@@ -780,6 +780,7 @@ dependencies = [
  "ego-tree",
  "encoding_rs",
  "epub",
+ "flate2",
  "percent-encoding",
  "pulldown-cmark",
  "reqwest",

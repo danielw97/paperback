@@ -225,7 +225,7 @@ private:
 
 class go_to_page_dialog : public dialog {
 public:
-	go_to_page_dialog(wxWindow* parent, document* doc, const parser* par, int current_page = 1);
+	go_to_page_dialog(wxWindow* parent, document* doc, const parser_info* parser, int current_page = 1);
 	~go_to_page_dialog() = default;
 	go_to_page_dialog(const go_to_page_dialog&) = delete;
 	go_to_page_dialog& operator=(const go_to_page_dialog&) = delete;
@@ -235,7 +235,7 @@ public:
 
 private:
 	document* doc_{nullptr};
-	const parser* parser_{nullptr};
+	const parser_info* parser_{nullptr};
 	wxSpinCtrl* input_ctrl{nullptr};
 
 	[[nodiscard]] int get_max_page() const;

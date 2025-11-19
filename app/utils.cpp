@@ -134,7 +134,7 @@ std::string trim_string(const std::string& str) {
 	}
 }
 
-const parser* get_parser_for_unknown_file(const wxString& path, config_manager& config) {
+const parser_info* get_parser_for_unknown_file(const wxString& path, config_manager& config) {
 	const wxString saved_format = config.get_document_format(path);
 	if (!saved_format.IsEmpty()) {
 		const auto* par = find_parser_by_extension(saved_format);

@@ -14,7 +14,10 @@ pub mod odp;
 pub mod odt;
 pub mod pptx;
 pub mod text;
+pub mod pdf;
 mod utils;
+
+pub const PASSWORD_REQUIRED_ERROR_PREFIX: &str = "[password_required]";
 
 pub trait Parser: Send + Sync {
 	fn name(&self) -> &str;
@@ -81,6 +84,7 @@ impl ParserRegistry {
 			registry.register(epub::EpubParser);
 			registry.register(fb2::Fb2Parser);
 			registry.register(html::HtmlParser);
+			registry.register(pdf::PdfParser);
 			registry.register(markdown::MarkdownParser);
 			registry.register(odp::OdpParser);
 			registry.register(odt::OdtParser);

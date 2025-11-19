@@ -11,7 +11,6 @@
 #include "constants.hpp"
 #include "libpaperback/src/bridge.rs.h"
 #include "parser.hpp"
-#include "rust_parser.hpp"
 #include "translation_manager.hpp"
 #include "utils.hpp"
 #include <cstdint>
@@ -113,7 +112,9 @@ bool app::OnInit() {
 	if (!preferred_language.IsEmpty()) {
 		translation_manager::instance().set_language(preferred_language);
 	}
-	register_rust_parsers();
+	if (!initialize_parser_registry()) {
+		return false;
+	}
 	single_instance_checker = std::make_unique<wxSingleInstanceChecker>(SINGLE_INSTANCE_NAME);
 	if (single_instance_checker->IsAnotherRunning()) {
 		if (argc > 1) {
@@ -186,14 +187,14 @@ void app::restore_previous_documents() {
 		if (existing_tab >= 0) {
 			continue;
 		}
-		const auto* par = find_parser_by_extension(wxFileName(path).GetExt());
-		if (par == nullptr) {
-			par = get_parser_for_unknown_file(path, config_mgr);
-			if (par == nullptr) {
+		const auto* parser = find_parser_by_extension(wxFileName(path).GetExt());
+		if (parser == nullptr) {
+			parser = get_parser_for_unknown_file(path, config_mgr);
+			if (parser == nullptr) {
 				continue;
 			}
 		}
-		if (!doc_manager->create_document_tab(path, par, false, false)) {
+		if (!doc_manager->create_document_tab(path, parser, false, false)) {
 			continue;
 		}
 	}
