@@ -44,9 +44,11 @@ pub fn find_zip_entry<R: Read + Seek>(archive: &mut ZipArchive<R>, filename: &st
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use std::io::{Cursor, Write};
+
 	use zip::{ZipWriter, write::FileOptions};
+
+	use super::*;
 
 	#[test]
 	fn test_zip_helpers() {

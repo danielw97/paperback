@@ -62,11 +62,7 @@ fn setup_pdfium() {
 	let lib_path = find_or_fetch_pdfium(&pdfium_root, &platform);
 	let link_search_dir = lib_dir.to_string_lossy();
 	println!("cargo:rustc-link-search=native={link_search_dir}");
-	let link_kind = if lib_path.extension().and_then(|ext| ext.to_str()) == Some("a") {
-		"static"
-	} else {
-		"dylib"
-	};
+	let link_kind = if lib_path.extension().and_then(|ext| ext.to_str()) == Some("a") { "static" } else { "dylib" };
 	println!("cargo:rustc-link-lib={link_kind}=pdfium");
 	println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_OS");
 	println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_ARCH");
@@ -102,12 +98,8 @@ fn detect_pdfium_platform() -> String {
 
 fn find_or_fetch_pdfium(pdfium_root: &Path, platform: &str) -> PathBuf {
 	let lib_dir = pdfium_root.join("lib");
-	let candidates = [
-		("pdfium.lib", "pdfium.dll.lib"),
-		("libpdfium.a", ""),
-		("libpdfium.dylib", ""),
-		("libpdfium.so", ""),
-	];
+	let candidates =
+		[("pdfium.lib", "pdfium.dll.lib"), ("libpdfium.a", ""), ("libpdfium.dylib", ""), ("libpdfium.so", "")];
 	for (final_name, original_name) in candidates {
 		let candidate = lib_dir.join(final_name);
 		if candidate.exists() {
@@ -144,4 +136,3 @@ fn download_pdfium(pdfium_root: &Path, platform: &str) {
 		}
 	}
 }
-

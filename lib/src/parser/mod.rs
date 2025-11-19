@@ -12,9 +12,9 @@ pub mod html;
 pub mod markdown;
 pub mod odp;
 pub mod odt;
+pub mod pdf;
 pub mod pptx;
 pub mod text;
-pub mod pdf;
 mod utils;
 
 pub const PASSWORD_REQUIRED_ERROR_PREFIX: &str = "[password_required]";

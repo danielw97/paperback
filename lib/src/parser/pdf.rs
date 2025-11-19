@@ -1,13 +1,13 @@
 use std::{
-	ffi::{c_void, CStr, CString},
+	ffi::{CStr, CString, c_void},
 	ptr,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
-	parser::{utils::extract_title_from_path, Parser, PASSWORD_REQUIRED_ERROR_PREFIX},
+	parser::{PASSWORD_REQUIRED_ERROR_PREFIX, Parser, utils::extract_title_from_path},
 	utils::text::{collapse_whitespace, trim_string},
 };
 
@@ -34,7 +34,9 @@ impl Parser for PdfParser {
 		let page_count = document.page_count()?;
 		for page_index in 0..page_count {
 			let marker_position = buffer.current_position();
-			buffer.add_marker(Marker::new(MarkerType::PageBreak, marker_position).with_text(format!("Page {}", page_index + 1)));
+			buffer.add_marker(
+				Marker::new(MarkerType::PageBreak, marker_position).with_text(format!("Page {}", page_index + 1)),
+			);
 			page_offsets.push(marker_position);
 			let page = match document.load_page(page_index) {
 				Some(page) => page,
@@ -49,7 +51,8 @@ impl Parser for PdfParser {
 				}
 			}
 		}
-		let title = document.extract_metadata(b"Title\0").unwrap_or_else(|| extract_title_from_path(&context.file_path));
+		let title =
+			document.extract_metadata(b"Title\0").unwrap_or_else(|| extract_title_from_path(&context.file_path));
 		let author = document.extract_metadata(b"Author\0").unwrap_or_default();
 		let toc_items = document.extract_toc(&page_offsets);
 		let mut doc = Document::new();
@@ -88,7 +91,9 @@ impl PdfDocument {
 	fn load(path: &str, password: Option<&str>) -> Result<Self> {
 		let path_cstr = CString::new(path).map_err(|_| anyhow!("PDF path contains embedded NUL bytes"))?;
 		let password_cstr = match password {
-			Some(pwd) if !pwd.is_empty() => Some(CString::new(pwd).map_err(|_| anyhow!("PDF password contains embedded NUL bytes"))?),
+			Some(pwd) if !pwd.is_empty() => {
+				Some(CString::new(pwd).map_err(|_| anyhow!("PDF password contains embedded NUL bytes"))?)
+			}
 			_ => None,
 		};
 		let handle = unsafe {
@@ -110,11 +115,7 @@ impl PdfDocument {
 
 	fn load_page(&self, index: i32) -> Option<PdfPage> {
 		let handle = unsafe { ffi::FPDF_LoadPage(self.handle, index) };
-		if handle.is_null() {
-			None
-		} else {
-			Some(PdfPage { handle })
-		}
+		if handle.is_null() { None } else { Some(PdfPage { handle }) }
 	}
 
 	fn extract_metadata(&self, tag: &[u8]) -> Option<String> {
@@ -125,12 +126,7 @@ impl PdfDocument {
 		}
 		let mut buffer = vec![0u16; length as usize / 2];
 		let written = unsafe {
-			ffi::FPDF_GetMetaText(
-				self.handle,
-				tag_cstr.as_ptr(),
-				buffer.as_mut_ptr() as *mut c_void,
-				length,
-			)
+			ffi::FPDF_GetMetaText(self.handle, tag_cstr.as_ptr(), buffer.as_mut_ptr() as *mut c_void, length)
 		};
 		if written <= 2 {
 			return None;
@@ -164,11 +160,7 @@ struct PdfPage {
 impl PdfPage {
 	fn load_text_page(&self) -> Option<PdfTextPage> {
 		let handle = unsafe { ffi::FPDFText_LoadPage(self.handle) };
-		if handle.is_null() {
-			None
-		} else {
-			Some(PdfTextPage { handle })
-		}
+		if handle.is_null() { None } else { Some(PdfTextPage { handle }) }
 	}
 }
 
@@ -219,16 +211,16 @@ fn process_text_lines(raw_text: &str) -> Vec<String> {
 		.filter_map(|line| {
 			let collapsed = collapse_whitespace(line);
 			let trimmed = trim_string(&collapsed);
-			if trimmed.is_empty() {
-				None
-			} else {
-				Some(trimmed)
-			}
+			if trimmed.is_empty() { None } else { Some(trimmed) }
 		})
 		.collect()
 }
 
-fn extract_outline_items(document: ffi::FPDF_DOCUMENT, mut bookmark: ffi::FPDF_BOOKMARK, page_offsets: &[usize]) -> Vec<TocItem> {
+fn extract_outline_items(
+	document: ffi::FPDF_DOCUMENT,
+	mut bookmark: ffi::FPDF_BOOKMARK,
+	page_offsets: &[usize],
+) -> Vec<TocItem> {
 	let mut items = Vec::new();
 	while !bookmark.is_null() {
 		let name = read_bookmark_title(bookmark).unwrap_or_default();
