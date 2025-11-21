@@ -11,7 +11,7 @@ crate-type = ["staticlib"]
 [dependencies]
 anyhow = "1.0.100"
 bitflags = "2.10.0"
-cxx = "1.0.188"
+cxx = "1.0.189"
 ego-tree = "0.10.0"
 encoding_rs = "0.8.35"
 epub = "2.1.5"
@@ -27,10 +27,10 @@ zip = { version = "6.0.0", default-features = false, features = ["deflate", "bzi
 
 [build-dependencies]
 bzip2 = "0.6.1"
-cc = "1.2.46"
-cxx = "1.0.188"
-cxx-build = "1.0"
-flate2 = "1.0.34"
+cc = "1.2.47"
+cxx = "1.0.189"
+cxx-build = "1.0.189"
+flate2 = "1.1.5"
 reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "rustls-tls"] }
 tar = "0.4.44"
 
