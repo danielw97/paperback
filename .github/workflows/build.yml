@@ -53,7 +53,11 @@ jobs:
           New-Item -ItemType Directory -Path build
         }
         cd build
-        cmake .. -GNinja
+        $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
+        cmake .. -GNinja `
+          -DGETTEXT_ROOT=C:/msys64/ucrt64 `
+          -DGETTEXT_MSGFMT_EXECUTABLE=C:/msys64/ucrt64/bin/msgfmt.exe `
+          -DGETTEXT_XGETTEXT_EXECUTABLE=C:/msys64/ucrt64/bin/xgettext.exe
     - name: Build
       run: |
         cd build

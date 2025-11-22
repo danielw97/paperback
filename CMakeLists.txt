@@ -28,7 +28,7 @@ if(CLANG_TIDY_EXE)
 	add_custom_target(lint COMMAND ${CLANG_TIDY_EXE} -warnings-as-errors=* --header-filter=^${CMAKE_SOURCE_DIR}/app/ --extra-arg=/EHsc ${ALL_SOURCE_FILES} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} USES_TERMINAL)
 endif()
 
-find_package(Gettext)
+find_package(Gettext REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
 
 if(GETTEXT_FOUND)
@@ -76,8 +76,6 @@ if(GETTEXT_FOUND)
 	if(MO_FILES)
 		add_custom_target(translations ALL DEPENDS ${MO_FILES})
 	endif()
-else()
-	message(WARNING "Gettext not found. Translations will not be built.")
 endif()
 
 find_program(CARGO_BIN cargo)
