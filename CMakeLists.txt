@@ -29,7 +29,6 @@ if(CLANG_TIDY_EXE)
 endif()
 
 find_package(Gettext)
-find_package(MbedTLS CONFIG REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
 
 if(GETTEXT_FOUND)
@@ -155,11 +154,13 @@ target_link_directories(paperback PRIVATE ${PDFIUM_LIB_DIR})
 target_link_libraries(paperback PRIVATE
 	${RUST_LIB_OUTPUT}
 	pdfium
-	MbedTLS::mbedcrypto
 	wx::base
 	wx::core
 	wx::net
 )
+if (WIN32)
+	target_link_libraries(paperback PRIVATE bcrypt)
+endif()
 
 if (MSVC)
 	target_compile_options(paperback PRIVATE /W4 /permissive- /WX)

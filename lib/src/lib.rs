@@ -2,6 +2,7 @@
 
 mod bridge;
 mod chmlib;
+mod config;
 pub mod document;
 mod html_to_text;
 pub mod parser;

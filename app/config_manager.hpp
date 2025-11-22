@@ -1,4 +1,4 @@
-/* config_manager.hpp - config management header file.
+/* config_manager.hpp - Rust-backed config management interface.
  *
  * Paperback.
  * Copyright (c) 2025 Quin Gillespie.
@@ -8,10 +8,11 @@
  */
 
 #pragma once
-#include <functional>
-#include <memory>
+#include "libpaperback/src/bridge.rs.h"
+#include <optional>
+#include <string>
 #include <vector>
-#include <wx/fileconf.h>
+#include <wx/arrstr.h>
 #include <wx/string.h>
 
 template <typename T>
@@ -66,8 +67,8 @@ public:
 	~config_manager();
 	config_manager(const config_manager&) = delete;
 	config_manager& operator=(const config_manager&) = delete;
-	config_manager(config_manager&&) = default;
-	config_manager& operator=(config_manager&&) = default;
+	config_manager(config_manager&&) noexcept = default;
+	config_manager& operator=(config_manager&&) noexcept = default;
 	bool initialize();
 	void flush();
 	void shutdown();
@@ -77,14 +78,6 @@ public:
 	void set_string(const wxString& key, const wxString& value);
 	void set_bool(const wxString& key, bool value);
 	void set_int(const wxString& key, int value);
-
-	wxFileConfig* get_config() const {
-		return config.get();
-	}
-
-	bool is_initialized() const {
-		return config != nullptr;
-	}
 
 	template <typename T>
 	T get(const app_setting<T>& setting) const {
@@ -134,8 +127,10 @@ public:
 	void import_settings_from_file(const wxString& doc_path, const wxString& import_path);
 
 private:
-	std::unique_ptr<wxFileConfig> config;
-	bool owns_global_config{false};
+	std::optional<rust::Box<ConfigManager>> backend;
+	bool is_initialized() const;
+	ConfigManager& backend_mut();
+	const ConfigManager& backend_ref() const;
 
 	template <typename T>
 	T get_app_setting(const wxString& key, const T& default_value) const;
@@ -145,13 +140,4 @@ private:
 	T get_document_setting(const wxString& path, const wxString& key, const T& default_value) const;
 	template <typename T>
 	void set_document_setting(const wxString& path, const wxString& key, const T& value);
-	static wxString get_config_path();
-	static bool is_directory_writable(const wxString& dir);
-	void load_defaults();
-	static wxString get_document_section(const wxString& path);
-	static wxString escape_document_path(const wxString& path);
-	void with_document_section(const wxString& path, const std::function<void()>& func) const;
-	void with_app_section(const std::function<void()>& func) const;
-	static wxString encode_note(const wxString& note);
-	static wxString decode_note(const wxString& encoded);
 };

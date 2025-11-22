@@ -69,7 +69,7 @@ impl PdfDocument {
 		}
 		let mut buffer = vec![0u16; length as usize / 2];
 		let written = unsafe {
-			ffi::FPDF_GetMetaText(self.handle, tag_cstr.as_ptr(), buffer.as_mut_ptr() as *mut c_void, length)
+			ffi::FPDF_GetMetaText(self.handle, tag_cstr.as_ptr(), buffer.as_mut_ptr().cast::<c_void>(), length)
 		};
 		if written <= 2 {
 			return None;
@@ -186,7 +186,7 @@ fn read_bookmark_title(bookmark: ffi::FPDF_BOOKMARK) -> Option<String> {
 		return None;
 	}
 	let mut buffer = vec![0u16; length as usize / 2];
-	let written = unsafe { ffi::FPDFBookmark_GetTitle(bookmark, buffer.as_mut_ptr() as *mut c_void, length) };
+	let written = unsafe { ffi::FPDFBookmark_GetTitle(bookmark, buffer.as_mut_ptr().cast::<c_void>(), length) };
 	if written <= 2 {
 		return None;
 	}
@@ -198,7 +198,7 @@ fn sanitize_utf16_buffer(buffer: &[u16], written_bytes: u32) -> Option<String> {
 	if total_units == 0 {
 		return None;
 	}
-	buffer.get(..total_units).map(|slice| String::from_utf16_lossy(slice))
+	buffer.get(..total_units).map(String::from_utf16_lossy)
 }
 
 fn map_pdfium_error(default_message: &str) -> anyhow::Error {

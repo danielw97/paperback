@@ -403,12 +403,10 @@ fn collect_text(node: Node<'_, '_>, buffer: &mut String) {
 }
 
 fn is_textual_mime(mime: &str) -> bool {
-	let mime_lower = mime.to_ascii_lowercase();
-	mime_lower == "application/xhtml+xml"
-		|| mime_lower == "application/x-dtbook+xml"
-		|| mime_lower == "application/xml"
-		|| mime_lower == "text/xml"
-		|| mime_lower == "text/html"
-		|| mime_lower.ends_with("+xml")
-		|| mime_lower.starts_with("text/")
+	let mime = mime.to_ascii_lowercase();
+	mime.starts_with("text/")
+		|| mime == "application/xml"
+		|| mime == "application/xhtml+xml"
+		|| mime == "application/x-dtbook+xml"
+		|| mime.ends_with("+xml")
 }

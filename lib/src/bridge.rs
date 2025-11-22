@@ -83,7 +83,98 @@ pub mod ffi {
 		pub manifest_items: Vec<FfiManifestItem>,
 	}
 
+	pub struct FfiBookmark {
+		pub start: i64,
+		pub end: i64,
+		pub note: String,
+	}
+
+	pub struct FfiNavigationHistory {
+		pub positions: Vec<i64>,
+		pub index: usize,
+	}
+
 	extern "Rust" {
+		type ConfigManager;
+
+		fn config_manager_new() -> Box<ConfigManager>;
+		fn config_manager_initialize(manager: &mut ConfigManager) -> bool;
+		fn config_manager_flush(manager: &ConfigManager);
+		fn config_manager_shutdown(manager: &mut ConfigManager);
+		fn config_manager_get_string(manager: &ConfigManager, key: &str, default_value: &str) -> String;
+		fn config_manager_get_bool(manager: &ConfigManager, key: &str, default_value: bool) -> bool;
+		fn config_manager_get_int(manager: &ConfigManager, key: &str, default_value: i32) -> i32;
+		fn config_manager_set_string(manager: &mut ConfigManager, key: &str, value: &str);
+		fn config_manager_set_bool(manager: &mut ConfigManager, key: &str, value: bool);
+		fn config_manager_set_int(manager: &mut ConfigManager, key: &str, value: i32);
+		fn config_manager_get_app_string(manager: &ConfigManager, key: &str, default_value: &str) -> String;
+		fn config_manager_get_app_bool(manager: &ConfigManager, key: &str, default_value: bool) -> bool;
+		fn config_manager_get_app_int(manager: &ConfigManager, key: &str, default_value: i32) -> i32;
+		fn config_manager_set_app_string(manager: &mut ConfigManager, key: &str, value: &str);
+		fn config_manager_set_app_bool(manager: &mut ConfigManager, key: &str, value: bool);
+		fn config_manager_set_app_int(manager: &mut ConfigManager, key: &str, value: i32);
+		fn config_manager_get_doc_string(manager: &ConfigManager, path: &str, key: &str, default_value: &str)
+		-> String;
+		fn config_manager_get_doc_bool(manager: &ConfigManager, path: &str, key: &str, default_value: bool) -> bool;
+		fn config_manager_get_doc_int(manager: &ConfigManager, path: &str, key: &str, default_value: i64) -> i64;
+		fn config_manager_set_doc_string(manager: &mut ConfigManager, path: &str, key: &str, value: &str);
+		fn config_manager_set_doc_bool(manager: &mut ConfigManager, path: &str, key: &str, value: bool);
+		fn config_manager_set_doc_int(manager: &mut ConfigManager, path: &str, key: &str, value: i64);
+		fn config_manager_add_recent_document(manager: &mut ConfigManager, path: &str);
+		fn config_manager_get_recent_documents(manager: &ConfigManager) -> Vec<String>;
+		fn config_manager_clear_recent_documents(manager: &mut ConfigManager);
+		fn config_manager_rebuild_recent_documents(manager: &mut ConfigManager);
+		fn config_manager_add_opened_document(manager: &mut ConfigManager, path: &str);
+		fn config_manager_remove_opened_document(manager: &mut ConfigManager, path: &str);
+		fn config_manager_get_opened_documents(manager: &ConfigManager) -> Vec<String>;
+		fn config_manager_clear_opened_documents(manager: &mut ConfigManager);
+		fn config_manager_set_document_position(manager: &mut ConfigManager, path: &str, position: i64);
+		fn config_manager_get_document_position(manager: &ConfigManager, path: &str) -> i64;
+		fn config_manager_set_navigation_history(
+			manager: &mut ConfigManager,
+			path: &str,
+			history: &Vec<i64>,
+			history_index: usize,
+		);
+		fn config_manager_get_navigation_history(manager: &ConfigManager, path: &str) -> FfiNavigationHistory;
+		fn config_manager_set_document_opened(manager: &mut ConfigManager, path: &str, opened: bool);
+		fn config_manager_get_document_opened(manager: &ConfigManager, path: &str) -> bool;
+		fn config_manager_remove_document_history(manager: &mut ConfigManager, path: &str);
+		fn config_manager_remove_navigation_history(manager: &mut ConfigManager, path: &str);
+		fn config_manager_get_all_opened_documents(manager: &ConfigManager) -> Vec<String>;
+		fn config_manager_get_all_documents(manager: &ConfigManager) -> Vec<String>;
+		fn config_manager_add_bookmark(manager: &mut ConfigManager, path: &str, start: i64, end: i64, note: &str);
+		fn config_manager_remove_bookmark(manager: &mut ConfigManager, path: &str, start: i64, end: i64);
+		fn config_manager_toggle_bookmark(manager: &mut ConfigManager, path: &str, start: i64, end: i64, note: &str);
+		fn config_manager_update_bookmark_note(
+			manager: &mut ConfigManager,
+			path: &str,
+			start: i64,
+			end: i64,
+			note: &str,
+		);
+		fn config_manager_get_bookmarks(manager: &ConfigManager, path: &str) -> Vec<FfiBookmark>;
+		fn config_manager_clear_bookmarks(manager: &mut ConfigManager, path: &str);
+		fn config_manager_get_next_bookmark(manager: &ConfigManager, path: &str, current_position: i64) -> FfiBookmark;
+		fn config_manager_get_previous_bookmark(
+			manager: &ConfigManager,
+			path: &str,
+			current_position: i64,
+		) -> FfiBookmark;
+		fn config_manager_get_closest_bookmark(
+			manager: &ConfigManager,
+			path: &str,
+			current_position: i64,
+		) -> FfiBookmark;
+		fn config_manager_set_document_format(manager: &mut ConfigManager, path: &str, format: &str);
+		fn config_manager_get_document_format(manager: &ConfigManager, path: &str) -> String;
+		fn config_manager_set_document_password(manager: &mut ConfigManager, path: &str, password: &str);
+		fn config_manager_get_document_password(manager: &ConfigManager, path: &str) -> String;
+		fn config_manager_needs_migration(manager: &ConfigManager) -> bool;
+		fn config_manager_migrate_config(manager: &mut ConfigManager) -> bool;
+		fn config_manager_export_document_settings(manager: &ConfigManager, doc_path: &str, export_path: &str);
+		fn config_manager_import_document_settings(manager: &mut ConfigManager, path: &str);
+		fn config_manager_import_settings_from_file(manager: &mut ConfigManager, doc_path: &str, import_path: &str);
 		fn check_for_updates(current_version: &str, is_installer: bool) -> UpdateResult;
 		fn remove_soft_hyphens(input: &str) -> String;
 		fn url_decode(encoded: &str) -> String;
@@ -103,11 +194,268 @@ use std::fs::File;
 
 use self::ffi::UpdateStatus;
 use crate::{
+	config::{Bookmark, ConfigManager as RustConfigManager, NavigationHistory},
 	document::{ParserContext, TocItem},
 	parser, update as update_module,
 	utils::{encoding, text, zip as zip_module},
 	xml_to_text::XmlToText,
 };
+
+type ConfigManager = crate::config::ConfigManager;
+
+fn config_manager_new() -> Box<RustConfigManager> {
+	Box::new(RustConfigManager::new())
+}
+
+fn config_manager_initialize(manager: &mut RustConfigManager) -> bool {
+	manager.initialize()
+}
+
+fn config_manager_flush(manager: &RustConfigManager) {
+	manager.flush();
+}
+
+fn config_manager_shutdown(manager: &mut RustConfigManager) {
+	manager.shutdown();
+}
+
+fn config_manager_get_string(manager: &RustConfigManager, key: &str, default_value: &str) -> String {
+	manager.get_string(key, default_value)
+}
+
+fn config_manager_get_bool(manager: &RustConfigManager, key: &str, default_value: bool) -> bool {
+	manager.get_bool(key, default_value)
+}
+
+fn config_manager_get_int(manager: &RustConfigManager, key: &str, default_value: i32) -> i32 {
+	manager.get_int(key, default_value)
+}
+
+fn config_manager_set_string(manager: &mut RustConfigManager, key: &str, value: &str) {
+	manager.set_string(key, value);
+}
+
+fn config_manager_set_bool(manager: &mut RustConfigManager, key: &str, value: bool) {
+	manager.set_bool(key, value);
+}
+
+fn config_manager_set_int(manager: &mut RustConfigManager, key: &str, value: i32) {
+	manager.set_int(key, value);
+}
+
+fn config_manager_get_app_string(manager: &RustConfigManager, key: &str, default_value: &str) -> String {
+	manager.get_app_string(key, default_value)
+}
+
+fn config_manager_get_app_bool(manager: &RustConfigManager, key: &str, default_value: bool) -> bool {
+	manager.get_app_bool(key, default_value)
+}
+
+fn config_manager_get_app_int(manager: &RustConfigManager, key: &str, default_value: i32) -> i32 {
+	manager.get_app_int(key, default_value)
+}
+
+fn config_manager_set_app_string(manager: &mut RustConfigManager, key: &str, value: &str) {
+	manager.set_app_string(key, value);
+}
+
+fn config_manager_set_app_bool(manager: &mut RustConfigManager, key: &str, value: bool) {
+	manager.set_app_bool(key, value);
+}
+
+fn config_manager_set_app_int(manager: &mut RustConfigManager, key: &str, value: i32) {
+	manager.set_app_int(key, value);
+}
+
+fn config_manager_get_doc_string(manager: &RustConfigManager, path: &str, key: &str, default_value: &str) -> String {
+	manager.get_document_string(path, key, default_value)
+}
+
+fn config_manager_get_doc_bool(manager: &RustConfigManager, path: &str, key: &str, default_value: bool) -> bool {
+	manager.get_document_bool(path, key, default_value)
+}
+
+fn config_manager_get_doc_int(manager: &RustConfigManager, path: &str, key: &str, default_value: i64) -> i64 {
+	manager.get_document_int(path, key, default_value)
+}
+
+fn config_manager_set_doc_string(manager: &mut RustConfigManager, path: &str, key: &str, value: &str) {
+	manager.set_document_string(path, key, value);
+}
+
+fn config_manager_set_doc_bool(manager: &mut RustConfigManager, path: &str, key: &str, value: bool) {
+	manager.set_document_bool(path, key, value);
+}
+
+fn config_manager_set_doc_int(manager: &mut RustConfigManager, path: &str, key: &str, value: i64) {
+	manager.set_document_int(path, key, value);
+}
+
+fn config_manager_add_recent_document(manager: &mut RustConfigManager, path: &str) {
+	manager.add_recent_document(path);
+}
+
+fn config_manager_get_recent_documents(manager: &RustConfigManager) -> Vec<String> {
+	manager.get_recent_documents()
+}
+
+fn config_manager_clear_recent_documents(manager: &mut RustConfigManager) {
+	manager.clear_recent_documents();
+}
+
+fn config_manager_rebuild_recent_documents(manager: &mut RustConfigManager) {
+	manager.rebuild_recent_documents();
+}
+
+fn config_manager_add_opened_document(manager: &mut RustConfigManager, path: &str) {
+	manager.add_opened_document(path);
+}
+
+fn config_manager_remove_opened_document(manager: &mut RustConfigManager, path: &str) {
+	manager.remove_opened_document(path);
+}
+
+fn config_manager_get_opened_documents(manager: &RustConfigManager) -> Vec<String> {
+	manager.get_opened_documents()
+}
+
+fn config_manager_clear_opened_documents(manager: &mut RustConfigManager) {
+	manager.clear_opened_documents();
+}
+
+fn config_manager_set_document_position(manager: &mut RustConfigManager, path: &str, position: i64) {
+	manager.set_document_position(path, position);
+}
+
+fn config_manager_get_document_position(manager: &RustConfigManager, path: &str) -> i64 {
+	manager.get_document_position(path)
+}
+
+fn config_manager_set_navigation_history(
+	manager: &mut RustConfigManager,
+	path: &str,
+	history: &Vec<i64>,
+	history_index: usize,
+) {
+	manager.set_navigation_history(path, history, history_index);
+}
+
+fn config_manager_get_navigation_history(manager: &RustConfigManager, path: &str) -> ffi::FfiNavigationHistory {
+	let history: NavigationHistory = manager.get_navigation_history(path);
+	ffi::FfiNavigationHistory { positions: history.positions, index: history.index }
+}
+
+fn config_manager_set_document_opened(manager: &mut RustConfigManager, path: &str, opened: bool) {
+	manager.set_document_opened(path, opened);
+}
+
+fn config_manager_get_document_opened(manager: &RustConfigManager, path: &str) -> bool {
+	manager.get_document_opened(path)
+}
+
+fn config_manager_remove_document_history(manager: &mut RustConfigManager, path: &str) {
+	manager.remove_document_history(path);
+}
+
+fn config_manager_remove_navigation_history(manager: &mut RustConfigManager, path: &str) {
+	manager.remove_navigation_history(path);
+}
+
+fn config_manager_get_all_opened_documents(manager: &RustConfigManager) -> Vec<String> {
+	manager.get_all_opened_documents()
+}
+
+fn config_manager_get_all_documents(manager: &RustConfigManager) -> Vec<String> {
+	manager.get_all_documents()
+}
+
+fn config_manager_add_bookmark(manager: &mut RustConfigManager, path: &str, start: i64, end: i64, note: &str) {
+	manager.add_bookmark(path, start, end, note);
+}
+
+fn config_manager_remove_bookmark(manager: &mut RustConfigManager, path: &str, start: i64, end: i64) {
+	manager.remove_bookmark(path, start, end);
+}
+
+fn config_manager_toggle_bookmark(manager: &mut RustConfigManager, path: &str, start: i64, end: i64, note: &str) {
+	manager.toggle_bookmark(path, start, end, note);
+}
+
+fn config_manager_update_bookmark_note(manager: &mut RustConfigManager, path: &str, start: i64, end: i64, note: &str) {
+	manager.update_bookmark_note(path, start, end, note);
+}
+
+fn config_manager_get_bookmarks(manager: &RustConfigManager, path: &str) -> Vec<ffi::FfiBookmark> {
+	manager.get_bookmarks(path).into_iter().map(to_ffi_bookmark).collect()
+}
+
+fn config_manager_clear_bookmarks(manager: &mut RustConfigManager, path: &str) {
+	manager.clear_bookmarks(path);
+}
+
+fn config_manager_get_next_bookmark(
+	manager: &RustConfigManager,
+	path: &str,
+	current_position: i64,
+) -> ffi::FfiBookmark {
+	to_ffi_bookmark(manager.get_next_bookmark(path, current_position))
+}
+
+fn config_manager_get_previous_bookmark(
+	manager: &RustConfigManager,
+	path: &str,
+	current_position: i64,
+) -> ffi::FfiBookmark {
+	to_ffi_bookmark(manager.get_previous_bookmark(path, current_position))
+}
+
+fn config_manager_get_closest_bookmark(
+	manager: &RustConfigManager,
+	path: &str,
+	current_position: i64,
+) -> ffi::FfiBookmark {
+	to_ffi_bookmark(manager.get_closest_bookmark(path, current_position))
+}
+
+fn config_manager_set_document_format(manager: &mut RustConfigManager, path: &str, format: &str) {
+	manager.set_document_format(path, format);
+}
+
+fn config_manager_get_document_format(manager: &RustConfigManager, path: &str) -> String {
+	manager.get_document_format(path)
+}
+
+fn config_manager_set_document_password(manager: &mut RustConfigManager, path: &str, password: &str) {
+	manager.set_document_password(path, password);
+}
+
+fn config_manager_get_document_password(manager: &RustConfigManager, path: &str) -> String {
+	manager.get_document_password(path)
+}
+
+fn config_manager_needs_migration(manager: &RustConfigManager) -> bool {
+	manager.needs_migration()
+}
+
+fn config_manager_migrate_config(manager: &mut RustConfigManager) -> bool {
+	manager.migrate_config()
+}
+
+fn config_manager_export_document_settings(manager: &RustConfigManager, doc_path: &str, export_path: &str) {
+	manager.export_document_settings(doc_path, export_path);
+}
+
+fn config_manager_import_document_settings(manager: &mut RustConfigManager, path: &str) {
+	manager.import_document_settings(path);
+}
+
+fn config_manager_import_settings_from_file(manager: &mut RustConfigManager, doc_path: &str, import_path: &str) {
+	manager.import_settings_from_file(doc_path, import_path);
+}
+
+fn to_ffi_bookmark(bookmark: Bookmark) -> ffi::FfiBookmark {
+	ffi::FfiBookmark { start: bookmark.start, end: bookmark.end, note: bookmark.note }
+}
 
 fn check_for_updates(current_version: &str, is_installer: bool) -> ffi::UpdateResult {
 	match update_module::check_for_updates(current_version, is_installer) {

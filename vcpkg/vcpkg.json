@@ -2,7 +2,6 @@
 	"name": "paperback",
 	"version": "0.6.1",
 	"dependencies": [
-		"mbedtls",
 		"wxwidgets"
 	]
 }

@@ -19,7 +19,7 @@ impl Parser for MarkdownParser {
 	}
 
 	fn extensions(&self) -> &[&str] {
-		&["md", "markdown", "mdown", "mkdn", "mkd"]
+		&["md", "markdown", "mdx", "mdown", "mdwn", "mkd", "mkdn", "mkdown", "ronn"]
 	}
 
 	fn supported_flags(&self) -> ParserFlags {
@@ -29,9 +29,6 @@ impl Parser for MarkdownParser {
 	fn parse(&self, context: &ParserContext) -> Result<Document> {
 		let bytes = fs::read(&context.file_path)
 			.with_context(|| format!("Failed to open Markdown file '{}'", context.file_path))?;
-		if bytes.is_empty() {
-			anyhow::bail!("Markdown file is empty: {}", context.file_path);
-		}
 		let markdown_content = convert_to_utf8(&bytes);
 		let parser = pulldown_cmark::Parser::new(&markdown_content);
 		let mut html_content = String::new();
