@@ -38,7 +38,7 @@ impl Parser for ChmParser {
 			let path = unit_info_path(ui);
 			let lower_path = path.to_lowercase();
 			if lower_path.contains(".hhc") && (hhc_file.is_empty() || lower_path.contains("index.hhc")) {
-				hhc_file = path.clone();
+				hhc_file.clone_from(&path);
 			}
 			if (lower_path.contains(".htm") || lower_path.contains(".html"))
 				&& !path.contains("/#")
@@ -57,16 +57,13 @@ impl Parser for ChmParser {
 		let mut file_positions = HashMap::new();
 		for file_path in ordered_files {
 			let section_start = buffer.current_position();
-			let content_bytes = match chm.read_file(&file_path) {
-				Ok(bytes) => bytes,
-				Err(_) => continue,
-			};
+			let Ok(content_bytes) = chm.read_file(&file_path) else { continue };
 			if content_bytes.is_empty() {
 				continue;
 			}
-			let content = convert_to_utf8(&content_bytes);
+			let utf8_content = convert_to_utf8(&content_bytes);
 			let mut converter = HtmlToText::new();
-			if !converter.convert(&content, HtmlSourceMode::NativeHtml) {
+			if !converter.convert(&utf8_content, HtmlSourceMode::NativeHtml) {
 				continue;
 			}
 			let text = converter.get_text();

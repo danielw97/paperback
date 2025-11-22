@@ -133,7 +133,7 @@ pub mod ffi {
 		fn config_manager_set_navigation_history(
 			manager: &mut ConfigManager,
 			path: &str,
-			history: &Vec<i64>,
+			history: &[i64],
 			history_index: usize,
 		);
 		fn config_manager_get_navigation_history(manager: &ConfigManager, path: &str) -> FfiNavigationHistory;
@@ -334,7 +334,7 @@ fn config_manager_get_document_position(manager: &RustConfigManager, path: &str)
 fn config_manager_set_navigation_history(
 	manager: &mut RustConfigManager,
 	path: &str,
-	history: &Vec<i64>,
+	history: &[i64],
 	history_index: usize,
 ) {
 	manager.set_navigation_history(path, history, history_index);

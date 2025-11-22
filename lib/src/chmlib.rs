@@ -93,7 +93,7 @@ impl ChmHandle {
 			if ui.length == 0 {
 				return Ok(Vec::new());
 			}
-			let mut buffer = vec![0u8; ui.length as usize];
+			let mut buffer = vec![0u8; usize::try_from(ui.length)?];
 			let bytes_read = chm_retrieve_object(self.handle, &raw const ui, buffer.as_mut_ptr(), 0, ui.length);
 			if bytes_read != ui.length {
 				anyhow::bail!("Failed to read complete CHM file (expected {} bytes, got {})", ui.length, bytes_read);
