@@ -57,7 +57,8 @@ jobs:
         cmake .. -GNinja `
           -DGETTEXT_ROOT=C:/msys64/ucrt64 `
           -DGETTEXT_MSGFMT_EXECUTABLE=C:/msys64/ucrt64/bin/msgfmt.exe `
-          -DGETTEXT_XGETTEXT_EXECUTABLE=C:/msys64/ucrt64/bin/xgettext.exe
+          -DGETTEXT_XGETTEXT_EXECUTABLE=C:/msys64/ucrt64/bin/xgettext.exe `
+          -DGETTEXT_MSGMERGE_EXECUTABLE=C:/msys64/ucrt64/bin/msgmerge.exe
     - name: Build
       run: |
         cd build

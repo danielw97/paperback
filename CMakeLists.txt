@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
+if(POLICY CMP0144)
+	cmake_policy(SET CMP0144 NEW)
+endif()
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/bin/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 set(VCPKG_MANIFEST_DIR "${CMAKE_SOURCE_DIR}/vcpkg")
 if(WIN32)
