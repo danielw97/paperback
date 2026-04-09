@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: paperback 0.8.5\n"
 "Report-Msgid-Bugs-To: https://github.com/trypsynth/paperback/issues\n"
-"POT-Creation-Date: 2026-04-08 21:20-0600\n"
+"POT-Creation-Date: 2026-04-08 21:34-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -88,6 +88,15 @@ msgstr ""
 msgid "&Reset to Default Font"
 msgstr ""
 
+msgid "Background Color"
+msgstr ""
+
+msgid "Choose &Background Color..."
+msgstr ""
+
+msgid "Reset to &Default Background"
+msgstr ""
+
 msgid "&Line spacing:"
 msgstr ""
 
@@ -98,6 +107,36 @@ msgid "1.5\\u{00d7}"
 msgstr ""
 
 msgid "Double"
+msgstr ""
+
+msgid "&Paragraph spacing:"
+msgstr ""
+
+msgid "Relaxed"
+msgstr ""
+
+msgid "Wide"
+msgstr ""
+
+msgid "L&etter spacing:"
+msgstr ""
+
+msgid "Very Wide"
+msgstr ""
+
+msgid "Text &alignment:"
+msgstr ""
+
+msgid "Left"
+msgstr ""
+
+msgid "Center"
+msgstr ""
+
+msgid "Right"
+msgstr ""
+
+msgid "Justify"
 msgstr ""
 
 msgid "General"
@@ -113,6 +152,9 @@ msgid "OK"
 msgstr ""
 
 msgid "Cancel"
+msgstr ""
+
+msgid "Background: Default"
 msgstr ""
 
 msgid "Font: Default"
