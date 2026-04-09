@@ -131,6 +131,9 @@ fn default_update_channel() -> String {
 fn default_font_color() -> i64 {
 	-1
 }
+fn default_bg_color() -> i64 {
+	-1
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct AppSettings {
@@ -180,6 +183,14 @@ struct AppSettings {
 	font_color: i64,
 	#[serde(default)]
 	font_encoding: i64,
+	#[serde(default = "default_bg_color")]
+	bg_color: i64,
+	#[serde(default)]
+	text_alignment: i64,
+	#[serde(default)]
+	letter_spacing: i64,
+	#[serde(default)]
+	paragraph_spacing: i64,
 	#[serde(default = "default_reading_speed_wpm")]
 	reading_speed_wpm: i64,
 	#[serde(default)]
@@ -212,6 +223,10 @@ impl Default for AppSettings {
 			font_strikethrough: false,
 			font_color: -1,
 			font_encoding: 0,
+			bg_color: -1,
+			text_alignment: 0,
+			letter_spacing: 0,
+			paragraph_spacing: 0,
 			reading_speed_wpm: 150,
 			line_spacing: 0,
 		}
@@ -495,6 +510,66 @@ impl ConfigManager {
 			return;
 		}
 		self.data.borrow_mut().app.line_spacing = i64::from(value);
+		self.dirty.set(true);
+	}
+
+	pub fn get_bg_color(&self) -> i32 {
+		if !self.initialized {
+			return -1;
+		}
+		self.data.borrow().app.bg_color.try_into().unwrap_or(-1)
+	}
+
+	pub fn set_bg_color(&self, color: i32) {
+		if !self.initialized {
+			return;
+		}
+		self.data.borrow_mut().app.bg_color = i64::from(color);
+		self.dirty.set(true);
+	}
+
+	pub fn get_text_alignment(&self) -> i32 {
+		if !self.initialized {
+			return 0;
+		}
+		self.data.borrow().app.text_alignment.try_into().unwrap_or(0)
+	}
+
+	pub fn set_text_alignment(&self, value: i32) {
+		if !self.initialized {
+			return;
+		}
+		self.data.borrow_mut().app.text_alignment = i64::from(value);
+		self.dirty.set(true);
+	}
+
+	pub fn get_letter_spacing(&self) -> i32 {
+		if !self.initialized {
+			return 0;
+		}
+		self.data.borrow().app.letter_spacing.clamp(0, 2).try_into().unwrap_or(0)
+	}
+
+	pub fn set_letter_spacing(&self, value: i32) {
+		if !self.initialized {
+			return;
+		}
+		self.data.borrow_mut().app.letter_spacing = i64::from(value);
+		self.dirty.set(true);
+	}
+
+	pub fn get_paragraph_spacing(&self) -> i32 {
+		if !self.initialized {
+			return 0;
+		}
+		self.data.borrow().app.paragraph_spacing.clamp(0, 2).try_into().unwrap_or(0)
+	}
+
+	pub fn set_paragraph_spacing(&self, value: i32) {
+		if !self.initialized {
+			return;
+		}
+		self.data.borrow_mut().app.paragraph_spacing = i64::from(value);
 		self.dirty.set(true);
 	}
 

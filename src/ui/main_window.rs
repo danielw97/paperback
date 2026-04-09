@@ -1122,6 +1122,10 @@ impl MainWindow {
 					cfg.set_update_channel(options.update_channel);
 					cfg.set_readability_font(&options.readability_font);
 					cfg.set_line_spacing(options.line_spacing);
+					cfg.set_bg_color(options.bg_color);
+					cfg.set_text_alignment(options.text_alignment);
+					cfg.set_letter_spacing(options.letter_spacing);
+					cfg.set_paragraph_spacing(options.paragraph_spacing);
 					cfg.flush();
 					drop(cfg);
 					let options_word_wrap = options.flags.contains(OptionsDialogFlags::WORD_WRAP);
@@ -1137,15 +1141,18 @@ impl MainWindow {
 						dm.lock().unwrap().apply_line_spacing(options.line_spacing);
 					} else {
 						// Font is default/reset: rebuild text controls so they inherit
-						// the system default font. apply_word_wrap also re-applies line spacing.
+						// the system default font. apply_word_wrap re-applies all settings.
 						let dm_for_wrap = Rc::clone(&dm);
 						let mut dm_ref = dm.lock().unwrap();
 						dm_ref.apply_word_wrap(&dm_for_wrap, options_word_wrap);
 						dm_ref.restore_focus();
-						// apply_word_wrap already handles color via build_font_from_readability flow,
-						// but if only color is set (default font), apply it explicitly here.
 						dm_ref.apply_color(options.readability_font.color);
 					}
+					// These apply regardless of font path
+					dm.lock().unwrap().apply_bg_color(options.bg_color);
+					dm.lock().unwrap().apply_text_alignment(options.text_alignment);
+					dm.lock().unwrap().apply_letter_spacing(options.letter_spacing);
+					dm.lock().unwrap().apply_paragraph_spacing(options.paragraph_spacing);
 					let options_compact_menu = options.flags.contains(OptionsDialogFlags::COMPACT_GO_MENU);
 					if current_language != options.language || old_compact_menu != options_compact_menu {
 						if current_language != options.language {

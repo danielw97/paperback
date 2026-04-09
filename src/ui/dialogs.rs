@@ -53,6 +53,10 @@ pub struct OptionsDialogResult {
 	pub update_channel: crate::config::UpdateChannel,
 	pub readability_font: ReadabilityFont,
 	pub line_spacing: i32,
+	pub bg_color: i32,
+	pub text_alignment: i32,
+	pub letter_spacing: i32,
+	pub paragraph_spacing: i32,
 }
 
 bitflags! {
@@ -94,6 +98,10 @@ struct OptionsDialogUi {
 	cancel_button: Button,
 	readability_font: Rc<RefCell<ReadabilityFont>>,
 	line_spacing_ctrl: Choice,
+	bg_color: Rc<Cell<i32>>,
+	text_alignment_ctrl: Choice,
+	letter_spacing_ctrl: Choice,
+	paragraph_spacing_ctrl: Choice,
 }
 
 pub fn show_options_dialog(parent: &Frame, config: &ConfigManager) -> Option<OptionsDialogResult> {
@@ -110,6 +118,10 @@ pub fn show_options_dialog(parent: &Frame, config: &ConfigManager) -> Option<Opt
 	};
 	let readability_font = ui.readability_font.borrow().clone();
 	let line_spacing = ui.line_spacing_ctrl.get_selection().unwrap_or(0) as i32;
+	let bg_color = ui.bg_color.get();
+	let text_alignment = ui.text_alignment_ctrl.get_selection().unwrap_or(0) as i32;
+	let letter_spacing = ui.letter_spacing_ctrl.get_selection().unwrap_or(0) as i32;
+	let paragraph_spacing = ui.paragraph_spacing_ctrl.get_selection().unwrap_or(0) as i32;
 	Some(OptionsDialogResult {
 		flags,
 		recent_documents_to_show: ui.recent_docs_ctrl.value(),
@@ -118,6 +130,10 @@ pub fn show_options_dialog(parent: &Frame, config: &ConfigManager) -> Option<Opt
 		update_channel,
 		readability_font,
 		line_spacing,
+		bg_color,
+		text_alignment,
+		letter_spacing,
+		paragraph_spacing,
 	})
 }
 
@@ -185,7 +201,7 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	channel_sizer.add(&update_channel_combo, 0, SizerFlag::AlignCenterVertical, 0);
 	general_sizer.add_sizer(&channel_sizer, 0, SizerFlag::All, option_padding);
 
-	// Readability tab
+	// Readability tab — Font group
 	let font_group_box = StaticBox::builder(&readability_panel).with_label(&t("Font")).build();
 	let font_group_sizer = StaticBoxSizerBuilder::new_with_box(&font_group_box, Orientation::Vertical).build();
 	let font_preview_label = StaticText::builder(&readability_panel).with_label("").build();
@@ -195,6 +211,20 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	font_group_sizer.add(&choose_font_button, 0, SizerFlag::All, option_padding);
 	font_group_sizer.add(&reset_font_button, 0, SizerFlag::All, option_padding);
 	readability_sizer.add_sizer(&font_group_sizer, 0, SizerFlag::Expand | SizerFlag::All, option_padding);
+
+	// Background color
+	let bg_group_box = StaticBox::builder(&readability_panel).with_label(&t("Background Color")).build();
+	let bg_group_sizer = StaticBoxSizerBuilder::new_with_box(&bg_group_box, Orientation::Vertical).build();
+	let bg_color_label = StaticText::builder(&readability_panel).with_label("").build();
+	let choose_bg_button =
+		Button::builder(&readability_panel).with_label(&t("Choose &Background Color...")).build();
+	let reset_bg_button = Button::builder(&readability_panel).with_label(&t("Reset to &Default Background")).build();
+	bg_group_sizer.add(&bg_color_label, 0, SizerFlag::All, option_padding);
+	bg_group_sizer.add(&choose_bg_button, 0, SizerFlag::All, option_padding);
+	bg_group_sizer.add(&reset_bg_button, 0, SizerFlag::All, option_padding);
+	readability_sizer.add_sizer(&bg_group_sizer, 0, SizerFlag::Expand | SizerFlag::All, option_padding);
+
+	// Layout choices
 	let line_spacing_label = StaticText::builder(&readability_panel).with_label(&t("&Line spacing:")).build();
 	let line_spacing_ctrl = Choice::builder(&readability_panel).build();
 	line_spacing_ctrl.append(&t("Normal"));
@@ -203,8 +233,58 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	let line_spacing_sizer = BoxSizer::builder(Orientation::Horizontal).build();
 	line_spacing_sizer.add(&line_spacing_label, 0, SizerFlag::AlignCenterVertical | SizerFlag::Right, DIALOG_PADDING);
 	line_spacing_sizer.add(&line_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
+
+	let paragraph_spacing_label =
+		StaticText::builder(&readability_panel).with_label(&t("&Paragraph spacing:")).build();
+	let paragraph_spacing_ctrl = Choice::builder(&readability_panel).build();
+	paragraph_spacing_ctrl.append(&t("Normal"));
+	paragraph_spacing_ctrl.append(&t("Relaxed"));
+	paragraph_spacing_ctrl.append(&t("Wide"));
+	let paragraph_spacing_sizer = BoxSizer::builder(Orientation::Horizontal).build();
+	paragraph_spacing_sizer.add(
+		&paragraph_spacing_label,
+		0,
+		SizerFlag::AlignCenterVertical | SizerFlag::Right,
+		DIALOG_PADDING,
+	);
+	paragraph_spacing_sizer.add(&paragraph_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
+
+	let letter_spacing_label =
+		StaticText::builder(&readability_panel).with_label(&t("L&etter spacing:")).build();
+	let letter_spacing_ctrl = Choice::builder(&readability_panel).build();
+	letter_spacing_ctrl.append(&t("Normal"));
+	letter_spacing_ctrl.append(&t("Wide"));
+	letter_spacing_ctrl.append(&t("Very Wide"));
+	let letter_spacing_sizer = BoxSizer::builder(Orientation::Horizontal).build();
+	letter_spacing_sizer.add(
+		&letter_spacing_label,
+		0,
+		SizerFlag::AlignCenterVertical | SizerFlag::Right,
+		DIALOG_PADDING,
+	);
+	letter_spacing_sizer.add(&letter_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
+
+	let text_alignment_label =
+		StaticText::builder(&readability_panel).with_label(&t("Text &alignment:")).build();
+	let text_alignment_ctrl = Choice::builder(&readability_panel).build();
+	text_alignment_ctrl.append(&t("Left"));
+	text_alignment_ctrl.append(&t("Center"));
+	text_alignment_ctrl.append(&t("Right"));
+	text_alignment_ctrl.append(&t("Justify"));
+	let text_alignment_sizer = BoxSizer::builder(Orientation::Horizontal).build();
+	text_alignment_sizer.add(
+		&text_alignment_label,
+		0,
+		SizerFlag::AlignCenterVertical | SizerFlag::Right,
+		DIALOG_PADDING,
+	);
+	text_alignment_sizer.add(&text_alignment_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
+
 	readability_sizer.add(&word_wrap_check, 0, SizerFlag::All, option_padding);
 	readability_sizer.add_sizer(&line_spacing_sizer, 0, SizerFlag::All, option_padding);
+	readability_sizer.add_sizer(&paragraph_spacing_sizer, 0, SizerFlag::All, option_padding);
+	readability_sizer.add_sizer(&letter_spacing_sizer, 0, SizerFlag::All, option_padding);
+	readability_sizer.add_sizer(&text_alignment_sizer, 0, SizerFlag::All, option_padding);
 	readability_panel.set_sizer(readability_sizer, true);
 
 	general_panel.set_sizer(general_sizer, true);
@@ -244,6 +324,14 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	let readability_font = Rc::new(RefCell::new(initial_font));
 	let stored_line_spacing = config.get_line_spacing().clamp(0, 2) as u32;
 	line_spacing_ctrl.set_selection(stored_line_spacing);
+	paragraph_spacing_ctrl.set_selection(config.get_paragraph_spacing().clamp(0, 2) as u32);
+	letter_spacing_ctrl.set_selection(config.get_letter_spacing().clamp(0, 2) as u32);
+	text_alignment_ctrl.set_selection(config.get_text_alignment().clamp(0, 3) as u32);
+
+	// Background color state
+	let stored_bg = config.get_bg_color();
+	bg_color_label.set_label(&color_description(stored_bg));
+	let bg_color = Rc::new(Cell::new(stored_bg));
 
 	// "Choose Font..." button handler
 	let font_state = Rc::clone(&readability_font);
@@ -264,6 +352,42 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 		let default_font = ReadabilityFont::default();
 		preview_label_reset.set_label(&font_description(&default_font));
 		*font_state_reset.borrow_mut() = default_font;
+	});
+
+	// "Choose Background Color..." button handler
+	let bg_state = Rc::clone(&bg_color);
+	let bg_label = bg_color_label;
+	let dialog_for_bg = dialog_ref;
+	choose_bg_button.on_click(move |_| {
+		let current = bg_state.get();
+		let initial = if current >= 0 {
+			let r = ((current >> 16) & 0xFF) as u8;
+			let g = ((current >> 8) & 0xFF) as u8;
+			let b = (current & 0xFF) as u8;
+			Some(Colour::rgb(r, g, b))
+		} else {
+			None
+		};
+		let mut dlg = ColourDialog::builder(&dialog_for_bg);
+		if let Some(c) = initial {
+			dlg = dlg.with_initial_colour(c);
+		}
+		let dlg = dlg.build();
+		if dlg.show_modal() == wxdragon::id::ID_OK {
+			if let Some(c) = dlg.get_colour() {
+				let packed = ((c.r as i32) << 16) | ((c.g as i32) << 8) | c.b as i32;
+				bg_state.set(packed);
+				bg_label.set_label(&color_description(packed));
+			}
+		}
+	});
+
+	// "Reset to Default Background" button handler
+	let bg_state_reset = Rc::clone(&bg_color);
+	let bg_label_reset = bg_label;
+	reset_bg_button.on_click(move |_| {
+		bg_state_reset.set(-1);
+		bg_label_reset.set_label(&color_description(-1));
 	});
 
 	let ok_button = Button::builder(&dialog_ref).with_id(wxdragon::id::ID_OK).with_label(&t("OK")).build();
@@ -290,6 +414,10 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 		cancel_button,
 		readability_font,
 		line_spacing_ctrl,
+		bg_color,
+		text_alignment_ctrl,
+		letter_spacing_ctrl,
+		paragraph_spacing_ctrl,
 	}
 }
 
@@ -340,6 +468,17 @@ fn build_options_dialog_flags(ui: &OptionsDialogUi) -> OptionsDialogFlags {
 		flags.insert(OptionsDialogFlags::BOOKMARK_SOUNDS);
 	}
 	flags
+}
+
+fn color_description(color: i32) -> String {
+	if color < 0 {
+		t("Background: Default")
+	} else {
+		let r = ((color >> 16) & 0xFF) as u8;
+		let g = ((color >> 8) & 0xFF) as u8;
+		let b = (color & 0xFF) as u8;
+		format!("#{r:02X}{g:02X}{b:02X}")
+	}
 }
 
 fn font_description(rf: &ReadabilityFont) -> String {
