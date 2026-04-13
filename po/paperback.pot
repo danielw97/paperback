@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: paperback 0.8.5\n"
 "Report-Msgid-Bugs-To: https://github.com/trypsynth/paperback/issues\n"
-"POT-Creation-Date: 2026-04-08 21:34-0600\n"
+"POT-Creation-Date: 2026-04-13 15:24-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -545,6 +545,13 @@ msgstr ""
 
 #, c-format
 msgid "Failed to check for updates. HTTP status: %d"
+msgstr ""
+
+msgid ""
+"Security verification failed. The update might have been tampered with: {}"
+msgstr ""
+
+msgid "Security Error"
 msgstr ""
 
 msgid "Error checking for updates."

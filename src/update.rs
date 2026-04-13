@@ -2,18 +2,21 @@ use std::{
 	env,
 	error::Error,
 	fmt::{Display, Formatter, Result as FmtResult},
-	fs::File,
+	fs::{self, File},
 	io::{Read, Write},
 	path::{Path, PathBuf},
+	str,
 	time::Duration,
 };
 
+use minisign_verify::{PublicKey, Signature};
 use serde::Deserialize;
 use ureq::{Agent, config::Config};
 
 use crate::{config::UpdateChannel, version};
 
 const RELEASE_URL: &str = "https://api.github.com/repos/trypsynth/paperback/releases/latest";
+const MINISIGN_PUBLIC_KEY: &str = "RWTS8ZfV6u8p/Wk8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8";
 
 #[derive(Debug, Deserialize)]
 struct ReleaseAsset {
@@ -32,6 +35,7 @@ struct GithubRelease {
 pub struct UpdateAvailableResult {
 	pub latest_version: String,
 	pub download_url: String,
+	pub signature_url: String,
 	pub release_notes: String,
 }
 
@@ -48,6 +52,7 @@ pub enum UpdateError {
 	NetworkError(String),
 	InvalidResponse(String),
 	NoDownload(String),
+	VerificationError(String),
 }
 
 impl Display for UpdateError {
@@ -58,22 +63,37 @@ impl Display for UpdateError {
 			Self::NetworkError(msg) => write!(f, "Network error: {msg}"),
 			Self::InvalidResponse(msg) => write!(f, "Invalid response: {msg}"),
 			Self::NoDownload(msg) => write!(f, "No download: {msg}"),
+			Self::VerificationError(msg) => write!(f, "Verification error: {msg}"),
 		}
 	}
 }
 
 impl Error for UpdateError {}
 
-pub fn download_update_file(url: &str, mut progress_callback: impl FnMut(u64, u64)) -> Result<PathBuf, UpdateError> {
+pub fn download_update_file(
+	url: &str,
+	signature_url: &str,
+	mut progress_callback: impl FnMut(u64, u64),
+) -> Result<PathBuf, UpdateError> {
 	let user_agent = version::user_agent();
 	let config = Config::builder()
 		.timeout_connect(Some(Duration::from_secs(30)))
 		.timeout_global(Some(Duration::from_secs(600)))
 		.build();
 	let agent = Agent::new_with_config(config);
+	let sig_resp = agent.get(signature_url).header("User-Agent", &user_agent).call().map_err(|err| match err {
+		ureq::Error::StatusCode(code) => UpdateError::HttpError(i32::from(code)),
+		_ => UpdateError::NetworkError(format!("Network error fetching signature: {err}")),
+	})?;
+	let mut sig_bytes = Vec::new();
+	sig_resp
+		.into_body()
+		.as_reader()
+		.read_to_end(&mut sig_bytes)
+		.map_err(|e| UpdateError::NetworkError(format!("Failed to read signature: {e}")))?;
 	let resp = agent.get(url).header("User-Agent", &user_agent).call().map_err(|err| match err {
 		ureq::Error::StatusCode(code) => UpdateError::HttpError(i32::from(code)),
-		_ => UpdateError::NetworkError(format!("Network error: {err}")),
+		_ => UpdateError::NetworkError(format!("Network error fetching update: {err}")),
 	})?;
 	let total_size = resp
 		.headers()
@@ -95,7 +115,8 @@ pub fn download_update_file(url: &str, mut progress_callback: impl FnMut(u64, u6
 	} else {
 		env::temp_dir()
 	};
-	dest_path.push(fname);
+	let tmp_fname = format!("{}.tmp", fname);
+	dest_path.push(&tmp_fname);
 	let mut file =
 		File::create(&dest_path).map_err(|e| UpdateError::NoDownload(format!("Failed to create file: {e}")))?;
 	let mut downloaded: u64 = 0;
@@ -112,7 +133,22 @@ pub fn download_update_file(url: &str, mut progress_callback: impl FnMut(u64, u6
 		downloaded += n as u64;
 		progress_callback(downloaded, total_size);
 	}
-	Ok(dest_path)
+	drop(file);
+	let data = fs::read(&dest_path)
+		.map_err(|e| UpdateError::NoDownload(format!("Failed to read downloaded file for verification: {e}")))?;
+	let pk = PublicKey::from_base64(MINISIGN_PUBLIC_KEY)
+		.map_err(|e| UpdateError::VerificationError(format!("Invalid public key: {e}")))?;
+	let sig_str = str::from_utf8(&sig_bytes)
+		.map_err(|e| UpdateError::VerificationError(format!("Signature is not valid UTF-8: {e}")))?;
+	let sig =
+		Signature::decode(sig_str).map_err(|e| UpdateError::VerificationError(format!("Invalid signature: {e}")))?;
+	pk.verify(&data, &sig, false)
+		.map_err(|e| UpdateError::VerificationError(format!("Signature verification failed: {e}")))?;
+	let mut final_path = dest_path.clone();
+	final_path.set_file_name(fname);
+	fs::rename(&dest_path, &final_path)
+		.map_err(|e| UpdateError::NoDownload(format!("Failed to rename verified file: {e}")))?;
+	Ok(final_path)
 }
 
 fn parse_semver_value(value: &str) -> Option<(u64, u64, u64)> {
@@ -128,14 +164,24 @@ fn parse_semver_value(value: &str) -> Option<(u64, u64, u64)> {
 	Some((major, minor, patch))
 }
 
-fn pick_download_url(is_installer: bool, assets: &[ReleaseAsset]) -> Option<String> {
+fn pick_download_url(is_installer: bool, assets: &[ReleaseAsset]) -> Option<(String, String)> {
 	let preferred_name = if is_installer { "paperback_setup.exe" } else { "paperback.zip" };
+	let sig_name = format!("{}.minisig", preferred_name);
+	let mut download_url = None;
+	let mut sig_url = None;
+
 	for asset in assets {
 		if asset.name.eq_ignore_ascii_case(preferred_name) {
-			return Some(asset.browser_download_url.clone());
+			download_url = Some(asset.browser_download_url.clone());
+		} else if asset.name.eq_ignore_ascii_case(&sig_name) {
+			sig_url = Some(asset.browser_download_url.clone());
 		}
 	}
-	None
+
+	match (download_url, sig_url) {
+		(Some(d), Some(s)) => Some((d, s)),
+		_ => None,
+	}
 }
 
 fn fetch_latest_release() -> Result<GithubRelease, UpdateError> {
@@ -204,9 +250,11 @@ fn check_for_dev_updates(current_commit: &str, is_installer: bool) -> Result<Upd
 	if let Some(position) = current_commit_position {
 		if position > 0 {
 			let new_notes = commit_lines[..position].join("\n");
-			let download_url = match release.assets.as_ref() {
+			let (download_url, signature_url) = match release.assets.as_ref() {
 				Some(list) if !list.is_empty() => pick_download_url(is_installer, list).ok_or_else(|| {
-					UpdateError::NoDownload("Update is available but no matching download asset was found.".to_string())
+					UpdateError::NoDownload(
+						"Update is available but no matching download asset or signature was found.".to_string(),
+					)
 				})?,
 				_ => {
 					return Err(UpdateError::NoDownload(
@@ -217,6 +265,7 @@ fn check_for_dev_updates(current_commit: &str, is_installer: bool) -> Result<Upd
 			Ok(UpdateCheckOutcome::UpdateAvailable(UpdateAvailableResult {
 				latest_version: format!("dev-{latest_remote_hash}"),
 				download_url,
+				signature_url,
 				release_notes: new_notes,
 			}))
 		} else {
@@ -224,9 +273,11 @@ fn check_for_dev_updates(current_commit: &str, is_installer: bool) -> Result<Upd
 		}
 	} else {
 		// Commit not in recent history, assume it's old and offer full update.
-		let download_url = match release.assets.as_ref() {
+		let (download_url, signature_url) = match release.assets.as_ref() {
 			Some(list) if !list.is_empty() => pick_download_url(is_installer, list).ok_or_else(|| {
-				UpdateError::NoDownload("Update is available but no matching download asset was found.".to_string())
+				UpdateError::NoDownload(
+					"Update is available but no matching download asset or signature was found.".to_string(),
+				)
 			})?,
 			_ => {
 				return Err(UpdateError::NoDownload(
@@ -237,6 +288,7 @@ fn check_for_dev_updates(current_commit: &str, is_installer: bool) -> Result<Upd
 		Ok(UpdateCheckOutcome::UpdateAvailable(UpdateAvailableResult {
 			latest_version: format!("dev-{latest_remote_hash}"),
 			download_url,
+			signature_url,
 			release_notes: raw_notes,
 		}))
 	}
@@ -252,15 +304,18 @@ fn check_for_stable_updates(current_version: &str, is_installer: bool) -> Result
 	if current >= latest_semver {
 		return Ok(UpdateCheckOutcome::UpToDate(release.tag_name));
 	}
-	let download_url = match release.assets.as_ref() {
+	let (download_url, signature_url) = match release.assets.as_ref() {
 		Some(list) if !list.is_empty() => pick_download_url(is_installer, list).ok_or_else(|| {
-			UpdateError::NoDownload("Update is available but no matching download asset was found.".to_string())
+			UpdateError::NoDownload(
+				"Update is available but no matching download asset or signature was found.".to_string(),
+			)
 		})?,
 		_ => return Err(UpdateError::NoDownload("Latest release does not include downloadable assets.".to_string())),
 	};
 	Ok(UpdateCheckOutcome::UpdateAvailable(UpdateAvailableResult {
 		latest_version: release.tag_name,
 		download_url,
+		signature_url,
 		release_notes: release.body.unwrap_or_default(),
 	}))
 }
@@ -312,22 +367,38 @@ mod tests {
 				browser_download_url: "https://example.com/paperback.zip".to_string(),
 			},
 			ReleaseAsset {
+				name: "paperback.zip.minisig".to_string(),
+				browser_download_url: "https://example.com/paperback.zip.minisig".to_string(),
+			},
+			ReleaseAsset {
 				name: "paperback_setup.exe".to_string(),
 				browser_download_url: "https://example.com/paperback_setup.exe".to_string(),
 			},
+			ReleaseAsset {
+				name: "paperback_setup.exe.minisig".to_string(),
+				browser_download_url: "https://example.com/paperback_setup.exe.minisig".to_string(),
+			},
 		];
-		let url = pick_download_url(true, &assets);
-		assert_eq!(url.as_deref(), Some("https://example.com/paperback_setup.exe"));
+		let (url, sig_url) = pick_download_url(true, &assets).unwrap();
+		assert_eq!(url, "https://example.com/paperback_setup.exe");
+		assert_eq!(sig_url, "https://example.com/paperback_setup.exe.minisig");
 	}
 
 	#[test]
 	fn pick_download_url_accepts_case_insensitive_matches() {
-		let assets = vec![ReleaseAsset {
-			name: "PAPERBACK.ZIP".to_string(),
-			browser_download_url: "https://example.com/PAPERBACK.ZIP".to_string(),
-		}];
-		let url = pick_download_url(false, &assets);
-		assert_eq!(url.as_deref(), Some("https://example.com/PAPERBACK.ZIP"));
+		let assets = vec![
+			ReleaseAsset {
+				name: "PAPERBACK.ZIP".to_string(),
+				browser_download_url: "https://example.com/PAPERBACK.ZIP".to_string(),
+			},
+			ReleaseAsset {
+				name: "PAPERBACK.ZIP.MINISIG".to_string(),
+				browser_download_url: "https://example.com/PAPERBACK.ZIP.MINISIG".to_string(),
+			},
+		];
+		let (url, sig_url) = pick_download_url(false, &assets).unwrap();
+		assert_eq!(url, "https://example.com/PAPERBACK.ZIP");
+		assert_eq!(sig_url, "https://example.com/PAPERBACK.ZIP.MINISIG");
 	}
 
 	#[test]
@@ -348,11 +419,24 @@ mod tests {
 				browser_download_url: "https://example.com/paperback.zip".to_string(),
 			},
 			ReleaseAsset {
+				name: "paperback.zip.minisig".to_string(),
+				browser_download_url: "https://example.com/paperback.zip.minisig".to_string(),
+			},
+			ReleaseAsset {
 				name: "paperback_setup.exe".to_string(),
 				browser_download_url: "https://example.com/paperback_setup.exe".to_string(),
 			},
+			ReleaseAsset {
+				name: "paperback_setup.exe.minisig".to_string(),
+				browser_download_url: "https://example.com/paperback_setup.exe.minisig".to_string(),
+			},
 		];
-		assert_eq!(pick_download_url(false, &assets).as_deref(), Some("https://example.com/paperback.zip"));
-		assert_eq!(pick_download_url(true, &assets).as_deref(), Some("https://example.com/paperback_setup.exe"));
+		let (url1, sig_url1) = pick_download_url(false, &assets).unwrap();
+		assert_eq!(url1, "https://example.com/paperback.zip");
+		assert_eq!(sig_url1, "https://example.com/paperback.zip.minisig");
+
+		let (url2, sig_url2) = pick_download_url(true, &assets).unwrap();
+		assert_eq!(url2, "https://example.com/paperback_setup.exe");
+		assert_eq!(sig_url2, "https://example.com/paperback_setup.exe.minisig");
 	}
 }

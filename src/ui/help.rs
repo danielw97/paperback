@@ -170,6 +170,7 @@ fn handle_update_available(
 		return;
 	}
 	let download_url = result.download_url;
+	let signature_url = result.signature_url;
 	let progress = ProgressDialog::builder(parent, &t("Paperback Update"), &t("Downloading update..."), 100)
 		.with_style(ProgressDialogStyle::AutoHide | ProgressDialogStyle::AppModal | ProgressDialogStyle::RemainingTime)
 		.build();
@@ -207,7 +208,7 @@ fn handle_update_available(
 	let d_total = total;
 	let d_is_running = is_running;
 	thread::spawn(move || {
-		let _res = update::download_update_file(&download_url, |d, t| {
+		let _res = update::download_update_file(&download_url, &signature_url, |d, t| {
 			d_downloaded.store(d, Ordering::Relaxed);
 			d_total.store(t, Ordering::Relaxed);
 		});
@@ -250,6 +251,10 @@ fn handle_update_error(parent: Option<&ParentWindow>, silent: bool, err: &Update
 		UpdateError::HttpError(code) if *code > 0 => {
 			let template = t("Failed to check for updates. HTTP status: %d");
 			(template.replacen("%d", &code.to_string(), 1), t("Error"))
+		}
+		UpdateError::VerificationError(msg) => {
+			let template = t("Security verification failed. The update might have been tampered with: {}");
+			(template.replace("{}", msg), t("Security Error"))
 		}
 		_ => {
 			let msg = err.to_string();
