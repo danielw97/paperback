@@ -674,7 +674,7 @@ pub fn apply_text_alignment_to_ctrl(text_ctrl: TextCtrl, alignment: i32) {
 	use windows::Win32::{
 		Foundation::{HWND, LPARAM, WPARAM},
 		UI::{
-			Controls::RichEdit::{PARAFORMAT2, PFM_ALIGNMENT, PFA_CENTER, PFA_JUSTIFY, PFA_LEFT, PFA_RIGHT},
+			Controls::RichEdit::{PARAFORMAT2, PFA_CENTER, PFA_JUSTIFY, PFA_LEFT, PFA_RIGHT, PFM_ALIGNMENT},
 			WindowsAndMessaging::SendMessageW,
 		},
 	};
@@ -708,8 +708,10 @@ pub fn apply_text_alignment_to_ctrl(_text_ctrl: TextCtrl, _alignment: i32) {}
 pub fn apply_letter_spacing_to_ctrl(text_ctrl: TextCtrl, spacing: i32) {
 	use windows::Win32::{
 		Foundation::{HWND, LPARAM, WPARAM},
-		UI::Controls::RichEdit::{CHARFORMAT2W, CFM_SPACING},
-		UI::WindowsAndMessaging::SendMessageW,
+		UI::{
+			Controls::RichEdit::{CFM_SPACING, CHARFORMAT2W},
+			WindowsAndMessaging::SendMessageW,
+		},
 	};
 	const EM_SETSEL: u32 = 177;
 	const EM_SETCHARFORMAT: u32 = 1092;
@@ -731,12 +733,7 @@ pub fn apply_letter_spacing_to_ctrl(text_ctrl: TextCtrl, spacing: i32) {
 		cf.Base.cbSize = std::mem::size_of::<CHARFORMAT2W>() as u32;
 		cf.Base.dwMask = CFM_SPACING;
 		cf.sSpacing = spacing_twips;
-		SendMessageW(
-			hwnd,
-			EM_SETCHARFORMAT,
-			Some(WPARAM(SCF_ALL as usize)),
-			Some(LPARAM(&raw const cf as isize)),
-		);
+		SendMessageW(hwnd, EM_SETCHARFORMAT, Some(WPARAM(SCF_ALL as usize)), Some(LPARAM(&raw const cf as isize)));
 	}
 }
 

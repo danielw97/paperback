@@ -216,8 +216,7 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	let bg_group_box = StaticBox::builder(&readability_panel).with_label(&t("Background Color")).build();
 	let bg_group_sizer = StaticBoxSizerBuilder::new_with_box(&bg_group_box, Orientation::Vertical).build();
 	let bg_color_label = StaticText::builder(&readability_panel).with_label("").build();
-	let choose_bg_button =
-		Button::builder(&readability_panel).with_label(&t("Choose &Background Color...")).build();
+	let choose_bg_button = Button::builder(&readability_panel).with_label(&t("Choose &Background Color...")).build();
 	let reset_bg_button = Button::builder(&readability_panel).with_label(&t("Reset to &Default Background")).build();
 	bg_group_sizer.add(&bg_color_label, 0, SizerFlag::All, option_padding);
 	bg_group_sizer.add(&choose_bg_button, 0, SizerFlag::All, option_padding);
@@ -234,8 +233,7 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	line_spacing_sizer.add(&line_spacing_label, 0, SizerFlag::AlignCenterVertical | SizerFlag::Right, DIALOG_PADDING);
 	line_spacing_sizer.add(&line_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
 
-	let paragraph_spacing_label =
-		StaticText::builder(&readability_panel).with_label(&t("&Paragraph spacing:")).build();
+	let paragraph_spacing_label = StaticText::builder(&readability_panel).with_label(&t("&Paragraph spacing:")).build();
 	let paragraph_spacing_ctrl = Choice::builder(&readability_panel).build();
 	paragraph_spacing_ctrl.append(&t("Normal"));
 	paragraph_spacing_ctrl.append(&t("Relaxed"));
@@ -249,8 +247,7 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	);
 	paragraph_spacing_sizer.add(&paragraph_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
 
-	let letter_spacing_label =
-		StaticText::builder(&readability_panel).with_label(&t("L&etter spacing:")).build();
+	let letter_spacing_label = StaticText::builder(&readability_panel).with_label(&t("L&etter spacing:")).build();
 	let letter_spacing_ctrl = Choice::builder(&readability_panel).build();
 	letter_spacing_ctrl.append(&t("Normal"));
 	letter_spacing_ctrl.append(&t("Wide"));
@@ -264,8 +261,7 @@ fn build_options_dialog_ui(parent: &Frame, config: &ConfigManager) -> OptionsDia
 	);
 	letter_spacing_sizer.add(&letter_spacing_ctrl, 0, SizerFlag::AlignCenterVertical, 0);
 
-	let text_alignment_label =
-		StaticText::builder(&readability_panel).with_label(&t("Text &alignment:")).build();
+	let text_alignment_label = StaticText::builder(&readability_panel).with_label(&t("Text &alignment:")).build();
 	let text_alignment_ctrl = Choice::builder(&readability_panel).build();
 	text_alignment_ctrl.append(&t("Left"));
 	text_alignment_ctrl.append(&t("Center"));
