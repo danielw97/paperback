@@ -48,13 +48,26 @@ jobs:
         $env:WXWIDGETS_DIR = "${{ github.workspace }}\wxWidgets"
         $env:PATH = "$env:PATH;C:\msys64\ucrt64\bin;C:\msys64\usr\bin"
         cargo release
+    - name: Sign artifacts
+      shell: pwsh
+      env:
+        MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+      run: |
+        $keyBytes = [Convert]::FromBase64String("${{ secrets.MINISIGN_KEY }}")
+        $keyPath = Join-Path $env:RUNNER_TEMP "paperback.key"
+        [IO.File]::WriteAllBytes($keyPath, $keyBytes)
+        minisign -S -s $keyPath -m target/release/paperback_setup.exe
+        minisign -S -s $keyPath -m target/release/paperback.zip
+        Remove-Item $keyPath
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: paperback-build
         path: |
           target/release/paperback.zip
+          target/release/paperback.zip.minisig
           target/release/paperback_setup.exe
+          target/release/paperback_setup.exe.minisig
         retention-days: 30
     - name: Get latest tag reachable from HEAD
       id: get_tag
@@ -86,7 +99,9 @@ jobs:
           ${{ steps.release_notes.outputs.commits }}
         files: |
           target/release/paperback.zip
+          target/release/paperback.zip.minisig
           target/release/paperback_setup.exe
+          target/release/paperback_setup.exe.minisig
         prerelease: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
