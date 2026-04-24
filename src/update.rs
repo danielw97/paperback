@@ -16,7 +16,7 @@ use ureq::{Agent, config::Config};
 use crate::{config::UpdateChannel, version};
 
 const RELEASE_URL: &str = "https://api.github.com/repos/trypsynth/paperback/releases/latest";
-const MINISIGN_PUBLIC_KEY: &str = "RWTS8ZfV6u8p/Wk8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8u1/9U8";
+const MINISIGN_PUBLIC_KEY: &str = "RWQasnbWXwK2dhno9ThUm8HONEIo85iiDBZvw3jlNs574QJHEkoRiGX7";
 
 #[derive(Debug, Deserialize)]
 struct ReleaseAsset {
