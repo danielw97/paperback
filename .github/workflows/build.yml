@@ -51,11 +51,11 @@ jobs:
     - name: Sign artifacts
       shell: pwsh
       env:
+        MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
         MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
       run: |
-        $keyBytes = [Convert]::FromBase64String("${{ secrets.MINISIGN_KEY }}")
         $keyPath = Join-Path $env:RUNNER_TEMP "paperback.key"
-        [IO.File]::WriteAllBytes($keyPath, $keyBytes)
+        [IO.File]::WriteAllText($keyPath, $env:MINISIGN_KEY)
         Write-Output $env:MINISIGN_PASSWORD | minisign -S -s $keyPath -m target/release/paperback_setup.exe
         Write-Output $env:MINISIGN_PASSWORD | minisign -S -s $keyPath -m target/release/paperback.zip
         Remove-Item $keyPath
