@@ -802,8 +802,8 @@ pub fn apply_readability_format_to_ctrl(
 		Graphics::Gdi::InvalidateRect,
 		UI::{
 			Controls::RichEdit::{
-				CFM_SPACING, CHARFORMAT2W, PARAFORMAT2, PFA_CENTER, PFA_JUSTIFY, PFA_LEFT,
-				PFA_RIGHT, PFM_ALIGNMENT, PFM_LINESPACING, PFM_SPACEAFTER,
+				CFM_SPACING, CHARFORMAT2W, PARAFORMAT2, PFA_CENTER, PFA_JUSTIFY, PFA_LEFT, PFA_RIGHT, PFM_ALIGNMENT,
+				PFM_LINESPACING, PFM_SPACEAFTER,
 			},
 			WindowsAndMessaging::SendMessageW,
 		},
@@ -850,12 +850,7 @@ pub fn apply_readability_format_to_ctrl(
 			cf.Base.cbSize = std::mem::size_of::<CHARFORMAT2W>() as u32;
 			cf.Base.dwMask = CFM_SPACING;
 			cf.sSpacing = spacing_twips;
-			SendMessageW(
-				hwnd,
-				EM_SETCHARFORMAT,
-				Some(WPARAM(SCF_ALL as usize)),
-				Some(LPARAM(&raw const cf as isize)),
-			);
+			SendMessageW(hwnd, EM_SETCHARFORMAT, Some(WPARAM(SCF_ALL as usize)), Some(LPARAM(&raw const cf as isize)));
 		}
 
 		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(0)));
