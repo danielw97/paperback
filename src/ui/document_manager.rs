@@ -149,10 +149,13 @@ impl DocumentManager {
 		panel.set_sizer(sizer, true);
 		let content = session.content();
 		fill_text_ctrl(text_ctrl, &content);
-		apply_line_spacing_to_ctrl(text_ctrl, config.get_line_spacing());
-		apply_paragraph_spacing_to_ctrl(text_ctrl, config.get_paragraph_spacing());
-		apply_letter_spacing_to_ctrl(text_ctrl, config.get_letter_spacing());
-		apply_text_alignment_to_ctrl(text_ctrl, config.get_text_alignment());
+		apply_readability_format_to_ctrl(
+			text_ctrl,
+			config.get_line_spacing(),
+			config.get_paragraph_spacing(),
+			config.get_letter_spacing(),
+			config.get_text_alignment(),
+		);
 		self.notebook.add_page(&panel, &title, true, None);
 		let path_str = path.to_string_lossy();
 		let nav_history = config.get_navigation_history(&path_str);
@@ -699,6 +702,7 @@ pub fn apply_text_alignment_to_ctrl(text_ctrl: TextCtrl, alignment: i32) {
 		pf.Base.dwMask = PFM_ALIGNMENT;
 		pf.Base.wAlignment = pfa;
 		SendMessageW(hwnd, EM_SETPARAFORMAT, None, Some(LPARAM(&raw const pf as isize)));
+		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(0)));
 	}
 }
 
@@ -735,6 +739,7 @@ pub fn apply_letter_spacing_to_ctrl(text_ctrl: TextCtrl, spacing: i32) {
 		cf.Base.dwMask = CFM_SPACING;
 		cf.sSpacing = spacing_twips;
 		SendMessageW(hwnd, EM_SETCHARFORMAT, Some(WPARAM(SCF_ALL as usize)), Some(LPARAM(&raw const cf as isize)));
+		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(0)));
 	}
 }
 
@@ -770,11 +775,104 @@ pub fn apply_paragraph_spacing_to_ctrl(text_ctrl: TextCtrl, spacing: i32) {
 		pf.Base.dwMask = PFM_SPACEAFTER;
 		pf.dySpaceAfter = space_after;
 		SendMessageW(hwnd, EM_SETPARAFORMAT, None, Some(LPARAM(&raw const pf as isize)));
+		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(0)));
 	}
 }
 
 #[cfg(not(target_os = "windows"))]
 pub fn apply_paragraph_spacing_to_ctrl(_text_ctrl: TextCtrl, _spacing: i32) {}
+
+/// Applies all paragraph/character readability formats in one batched operation.
+/// Returns immediately with no Windows messages when all values are at their defaults (all 0).
+/// For non-default values, suppresses redraws across both format passes so the control
+/// only repaints once at the end.
+#[cfg(target_os = "windows")]
+pub fn apply_readability_format_to_ctrl(
+	text_ctrl: TextCtrl,
+	line_spacing: i32,
+	para_spacing: i32,
+	letter_spacing: i32,
+	alignment: i32,
+) {
+	if line_spacing == 0 && para_spacing == 0 && letter_spacing == 0 && alignment == 0 {
+		return;
+	}
+	use windows::Win32::{
+		Foundation::{HWND, LPARAM, RECT, WPARAM},
+		Graphics::Gdi::InvalidateRect,
+		UI::{
+			Controls::RichEdit::{
+				CFM_SPACING, CHARFORMAT2W, PARAFORMAT2, PFA_CENTER, PFA_JUSTIFY, PFA_LEFT,
+				PFA_RIGHT, PFM_ALIGNMENT, PFM_LINESPACING, PFM_SPACEAFTER,
+			},
+			WindowsAndMessaging::SendMessageW,
+		},
+	};
+	const EM_SETSEL: u32 = 177;
+	const EM_SETPARAFORMAT: u32 = 1095;
+	const EM_SETCHARFORMAT: u32 = 1092;
+	const SCF_ALL: u32 = 4;
+	const WM_SETREDRAW: u32 = 11;
+	let hwnd_ptr = text_ctrl.get_handle();
+	if hwnd_ptr.is_null() {
+		return;
+	}
+	let hwnd = HWND(hwnd_ptr);
+	unsafe {
+		SendMessageW(hwnd, WM_SETREDRAW, Some(WPARAM(0)), None);
+		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(-1_isize)));
+
+		// Combine line spacing + paragraph spacing + alignment into one EM_SETPARAFORMAT
+		let mut pf = PARAFORMAT2::default();
+		pf.Base.cbSize = std::mem::size_of::<PARAFORMAT2>() as u32;
+		pf.Base.dwMask = PFM_LINESPACING | PFM_SPACEAFTER | PFM_ALIGNMENT;
+		pf.bLineSpacingRule = line_spacing.clamp(0, 2) as u8;
+		pf.dySpaceAfter = match para_spacing {
+			1 => 120,
+			2 => 240,
+			_ => 0,
+		};
+		pf.Base.wAlignment = match alignment {
+			1 => PFA_CENTER,
+			2 => PFA_RIGHT,
+			3 => PFA_JUSTIFY,
+			_ => PFA_LEFT,
+		};
+		SendMessageW(hwnd, EM_SETPARAFORMAT, None, Some(LPARAM(&raw const pf as isize)));
+
+		if letter_spacing != 0 {
+			let spacing_twips: i16 = match letter_spacing {
+				1 => 20,
+				2 => 40,
+				_ => 0,
+			};
+			let mut cf = std::mem::zeroed::<CHARFORMAT2W>();
+			cf.Base.cbSize = std::mem::size_of::<CHARFORMAT2W>() as u32;
+			cf.Base.dwMask = CFM_SPACING;
+			cf.sSpacing = spacing_twips;
+			SendMessageW(
+				hwnd,
+				EM_SETCHARFORMAT,
+				Some(WPARAM(SCF_ALL as usize)),
+				Some(LPARAM(&raw const cf as isize)),
+			);
+		}
+
+		SendMessageW(hwnd, EM_SETSEL, Some(WPARAM(0)), Some(LPARAM(0)));
+		SendMessageW(hwnd, WM_SETREDRAW, Some(WPARAM(1)), None);
+		InvalidateRect(Some(hwnd), None::<*const RECT>, true);
+	}
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn apply_readability_format_to_ctrl(
+	_text_ctrl: TextCtrl,
+	_line_spacing: i32,
+	_para_spacing: i32,
+	_letter_spacing: i32,
+	_alignment: i32,
+) {
+}
 
 fn show_reader_context_menu(text_ctrl: TextCtrl) {
 	text_ctrl.set_focus();
