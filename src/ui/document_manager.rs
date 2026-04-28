@@ -1,3 +1,5 @@
+#[cfg(target_os = "linux")]
+use std::collections::HashMap;
 use std::{
 	cell::Cell,
 	fs,
@@ -6,8 +8,6 @@ use std::{
 	sync::{Mutex, atomic::Ordering},
 	time::Instant,
 };
-#[cfg(target_os = "linux")]
-use std::collections::HashMap;
 
 use wxdragon::{
 	color::Colour,
@@ -480,7 +480,8 @@ impl DocumentManager {
 			let current_pos = old_ctrl.get_insertion_point();
 			let content = old_ctrl.get_value();
 			#[cfg(target_os = "linux")]
-			let text_ctrl = Self::build_text_ctrl(tab.panel, word_wrap, self_rc, self.frame, Rc::clone(&self.navigation_key_map));
+			let text_ctrl =
+				Self::build_text_ctrl(tab.panel, word_wrap, self_rc, self.frame, Rc::clone(&self.navigation_key_map));
 			#[cfg(not(target_os = "linux"))]
 			let text_ctrl = Self::build_text_ctrl(tab.panel, word_wrap, self_rc);
 			let sizer = BoxSizer::builder(Orientation::Vertical).build();

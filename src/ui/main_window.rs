@@ -13,6 +13,8 @@ use std::{
 
 use wxdragon::{prelude::*, timer::Timer, translations::translate as t};
 
+#[cfg(not(target_os = "linux"))]
+use super::tray;
 use super::{
 	dialogs::{self, OptionsDialogFlags},
 	document_manager::{DocumentManager, build_font_from_readability},
@@ -22,8 +24,6 @@ use super::{
 	navigation::{self, MarkerNavTarget},
 	status,
 };
-#[cfg(not(target_os = "linux"))]
-use super::tray;
 use crate::{
 	config::{ConfigManager, UpdateChannel},
 	ipc::IpcCommand,

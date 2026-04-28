@@ -22,11 +22,7 @@ pub fn show_toc_dialog(parent: &Frame, toc_items: &[TocItem], current_offset: i3
 	let mut tree = AccessibleTree::new();
 	populate_toc(&mut tree, toc_items, 0);
 
-	let select_idx = if current_offset != -1 {
-		tree.expand_to_offset(i64::from(current_offset))
-	} else {
-		None
-	};
+	let select_idx = if current_offset != -1 { tree.expand_to_offset(i64::from(current_offset)) } else { None };
 
 	let selected_offset = Rc::new(Cell::new(-1i64));
 	let sel = Rc::clone(&selected_offset);
@@ -44,7 +40,9 @@ pub fn show_toc_dialog(parent: &Frame, toc_items: &[TocItem], current_offset: i3
 	tree.show_and_focus(select_idx.unwrap_or(0));
 
 	let response = dialog.run();
-	unsafe { dialog.destroy(); }
+	unsafe {
+		dialog.destroy();
+	}
 
 	if response == ResponseType::Ok {
 		let offset = selected_offset.get();

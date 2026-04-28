@@ -1,7 +1,15 @@
 use std::{cell::RefCell, ffi::c_void, rc::Rc};
 
-use gtk::{Dialog, Label, ListBox, ListBoxRow, ResponseType, Widget, Window, gdk::EventKey, glib::{Propagation, translate}, prelude::*};
-use wxdragon::{prelude::{Frame, WxWidget}, translations::translate as t};
+use gtk::{
+	Dialog, Label, ListBox, ListBoxRow, ResponseType, Widget, Window,
+	gdk::EventKey,
+	glib::{Propagation, translate},
+	prelude::*,
+};
+use wxdragon::{
+	prelude::{Frame, WxWidget},
+	translations::translate as t,
+};
 
 const GDK_KEY_LEFT: u32 = 0xff51;
 const GDK_KEY_RIGHT: u32 = 0xff53;
@@ -33,11 +41,7 @@ impl AccessibleTree {
 		let list_box = ListBox::new();
 		list_box.set_selection_mode(gtk::SelectionMode::Browse);
 		list_box.set_activate_on_single_click(false);
-		Self {
-			list_box,
-			rows: Rc::new(RefCell::new(Vec::new())),
-			offsets: Vec::new(),
-		}
+		Self { list_box, rows: Rc::new(RefCell::new(Vec::new())), offsets: Vec::new() }
 	}
 
 	/// Add an item to the tree. Items must be added in depth-first order.
@@ -91,7 +95,12 @@ impl AccessibleTree {
 
 	/// Connect selection tracking, activation, and key handling.
 	/// `shift_tab_target`: widget to focus on Shift-Tab.
-	pub fn connect_events(&self, dialog: &Dialog, on_select: Rc<dyn Fn(i64)>, shift_tab_target: impl IsA<Widget> + 'static) {
+	pub fn connect_events(
+		&self,
+		dialog: &Dialog,
+		on_select: Rc<dyn Fn(i64)>,
+		shift_tab_target: impl IsA<Widget> + 'static,
+	) {
 		let offsets_for_sel = self.offsets.clone();
 		self.list_box.connect_row_selected(move |_, row| {
 			if let Some(row) = row {
@@ -116,7 +125,13 @@ impl AccessibleTree {
 	}
 }
 
-fn handle_key(lb: &ListBox, event: &EventKey, rows: &Rc<RefCell<Vec<RowInfo>>>, dialog: &Dialog, shift_tab_target: &Widget) -> Propagation {
+fn handle_key(
+	lb: &ListBox,
+	event: &EventKey,
+	rows: &Rc<RefCell<Vec<RowInfo>>>,
+	dialog: &Dialog,
+	shift_tab_target: &Widget,
+) -> Propagation {
 	let keyval = *event.keyval();
 
 	if keyval == GDK_KEY_TAB || keyval == GDK_KEY_ISO_LEFT_TAB {
@@ -211,10 +226,8 @@ fn is_visible(info: &[RowInfo], idx: usize) -> bool {
 
 fn set_row_accessible_name(list_box: &ListBox, info: &[RowInfo], idx: usize) {
 	let Some(row) = list_box.row_at_index(idx as i32) else { return };
-	let label_text = row.child()
-		.and_then(|w| w.downcast::<Label>().ok())
-		.map(|l| l.text().to_string())
-		.unwrap_or_default();
+	let label_text =
+		row.child().and_then(|w| w.downcast::<Label>().ok()).map(|l| l.text().to_string()).unwrap_or_default();
 	let accessible_name = if info[idx].has_children {
 		let state = if info[idx].expanded { t("expanded") } else { t("collapsed") };
 		format!("{label_text}, {state}")
@@ -224,7 +237,9 @@ fn set_row_accessible_name(list_box: &ListBox, info: &[RowInfo], idx: usize) {
 	let atk_obj = gtk_widget_get_accessible(row.as_ptr() as *mut c_void);
 	if !atk_obj.is_null() {
 		if let Ok(c_name) = std::ffi::CString::new(accessible_name) {
-			unsafe { atk_object_set_name(atk_obj, c_name.as_ptr()); }
+			unsafe {
+				atk_object_set_name(atk_obj, c_name.as_ptr());
+			}
 		}
 	}
 }

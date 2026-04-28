@@ -33,7 +33,9 @@ pub fn show_elements_dialog(parent: &Frame, session: &DocumentSession, current_p
 	populate_headings(&mut headings_tree, &tree_data.items);
 	let headings_select_idx = if tree_data.closest_index >= 0 {
 		// The heading tree uses flat indices; find the matching row
-		tree_data.items.get(tree_data.closest_index as usize)
+		tree_data
+			.items
+			.get(tree_data.closest_index as usize)
 			.and_then(|item| headings_tree.expand_to_offset(i64::try_from(item.offset).unwrap_or(i64::MAX)))
 	} else {
 		None
@@ -114,7 +116,9 @@ pub fn show_elements_dialog(parent: &Frame, session: &DocumentSession, current_p
 	}
 
 	let response = dialog.run();
-	unsafe { dialog.destroy(); }
+	unsafe {
+		dialog.destroy();
+	}
 
 	if response == ResponseType::Ok {
 		let offset = selected_offset.get();
@@ -154,11 +158,8 @@ fn populate_headings(tree: &mut AccessibleTree, items: &[crate::types::HeadingTr
 
 	// First pass: compute depths and mark which items have children
 	for item in items {
-		let depth = if item.parent_index >= 0 {
-			depths.get(item.parent_index as usize).map_or(0, |&d: &i32| d + 1)
-		} else {
-			0
-		};
+		let depth =
+			if item.parent_index >= 0 { depths.get(item.parent_index as usize).map_or(0, |&d: &i32| d + 1) } else { 0 };
 		depths.push(depth);
 		if item.parent_index >= 0 {
 			if let Ok(pi) = usize::try_from(item.parent_index) {
