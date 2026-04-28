@@ -380,23 +380,13 @@ impl DocumentManager {
 		let path_str = tab.file_path.to_string_lossy().to_string();
 		let bookmarks = config.get_bookmarks(&path_str);
 		drop(config);
-		let (prev_line_start, _) = tab.session.get_line_bounds(prev);
-		let (line_start, line_end) = tab.session.get_line_bounds(position);
-		let same_line = prev_line_start == line_start;
 		let mut has_note = false;
 		let mut has_bookmark = false;
 		for bm in &bookmarks {
-			let triggered = if same_line {
-				// Within the same content line: use precise range crossing (for Ctrl+Left/Right).
-				if position > prev {
-					bm.start > prev && bm.start <= position
-				} else {
-					bm.start >= position && bm.start < prev
-				}
+			let triggered = if position > prev {
+				bm.start > prev && bm.start <= position
 			} else {
-				// Crossed a line boundary (Up/Down): fire only if a bookmark is on the
-				// current line. This prevents false positives when jumping over bookmarks.
-				bm.start >= line_start && bm.start <= line_end
+				bm.start >= position && bm.start < prev
 			};
 			if triggered {
 				if !bm.note.is_empty() {
