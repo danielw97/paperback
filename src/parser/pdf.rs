@@ -6,8 +6,8 @@ use wxdragon::translations::translate as t;
 
 use crate::{
 	document::{Document, DocumentBuffer, Marker, MarkerType, ParserContext, ParserFlags, TocItem},
-	parser::{PASSWORD_REQUIRED_ERROR_PREFIX, Parser, path::extract_title_from_path},
-	text::{collapse_whitespace, display_len, trim_string},
+	parser::{PASSWORD_REQUIRED_ERROR_PREFIX, Parser, util::path::extract_title_from_path},
+	util::text::{collapse_whitespace, display_len, trim_string},
 };
 
 pub struct PdfParser;
