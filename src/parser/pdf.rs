@@ -281,9 +281,7 @@ impl Parser for PdfParser {
 			}
 		} else if toc_items.is_empty() && !detected_heading_positions.is_empty() {
 			for (pos, text) in &detected_heading_positions {
-				buffer.add_marker(
-					Marker::new(MarkerType::Heading1, *pos).with_text(text.clone()).with_level(1),
-				);
+				buffer.add_marker(Marker::new(MarkerType::Heading1, *pos).with_text(text.clone()).with_level(1));
 			}
 			toc_items = detected_heading_positions
 				.into_iter()
@@ -328,10 +326,7 @@ fn is_cjk(c: char) -> bool {
 }
 
 fn sanitize_pdf_text(input: &str) -> String {
-	input
-		.chars()
-		.filter(|&ch| (!ch.is_control() || matches!(ch, '\n' | '\r' | '\t')) && ch != '\u{00AD}')
-		.collect()
+	input.chars().filter(|&ch| (!ch.is_control() || matches!(ch, '\n' | '\r' | '\t')) && ch != '\u{00AD}').collect()
 }
 
 fn extract_text_lines(text_page: &PdfiumTextPage) -> Vec<(String, f64)> {
@@ -386,8 +381,7 @@ fn median_line_font_size(line_infos: &[(String, f64)]) -> f64 {
 fn join_paragraphs(raw_lines: &[(String, f64)], body_font_size: f64) -> Vec<(String, bool)> {
 	const HEADING_FONT_RATIO: f64 = 1.2;
 	const HEADING_MAX_LEN: usize = 150;
-	let heading_threshold =
-		if body_font_size > 0.0 { body_font_size * HEADING_FONT_RATIO } else { f64::INFINITY };
+	let heading_threshold = if body_font_size > 0.0 { body_font_size * HEADING_FONT_RATIO } else { f64::INFINITY };
 	let lines: Vec<(String, bool)> = raw_lines
 		.iter()
 		.map(|(text, size)| {
@@ -820,10 +814,7 @@ mod tests {
 
 	#[test]
 	fn join_paragraphs_merges_continuation_lines() {
-		let lines = vec![
-			("The suggestion appears here.".to_string(), 12.0),
-			("And here.".to_string(), 12.0),
-		];
+		let lines = vec![("The suggestion appears here.".to_string(), 12.0), ("And here.".to_string(), 12.0)];
 		let result = join_paragraphs(&lines, 12.0);
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].0, "The suggestion appears here. And here.");
@@ -832,10 +823,8 @@ mod tests {
 
 	#[test]
 	fn join_paragraphs_flags_large_font_lines_as_headings() {
-		let lines = vec![
-			("Chapter One".to_string(), 18.0),
-			("This is the body text of the document.".to_string(), 12.0),
-		];
+		let lines =
+			vec![("Chapter One".to_string(), 18.0), ("This is the body text of the document.".to_string(), 12.0)];
 		let result = join_paragraphs(&lines, 12.0);
 		assert_eq!(result.len(), 2);
 		assert_eq!(result[0].0, "Chapter One");
